@@ -95,10 +95,11 @@ Las migraciones se ejecutan en orden y se registran en `schema_migrations`:
 2. `002_create_authentication.sql`
 3. `003_create_store_and_inquiries.sql`
 4. `004_create_products.sql`
+5. `005_translate_seed_categories.sql`
 
 El ejecutor usa un bloqueo asesor de PostgreSQL para evitar ejecuciones concurrentes.
 
-Para la entrega también se incluye `database/create_database.sql`, un archivo SQL único de creación que incorpora las cuatro migraciones. Debe ejecutarse sobre una base vacía:
+Para la entrega también se incluye `database/create_database.sql`, un archivo SQL único de creación que incorpora las cinco migraciones. Debe ejecutarse sobre una base vacía:
 
 ```bash
 psql "$DATABASE_URL" -f database/create_database.sql

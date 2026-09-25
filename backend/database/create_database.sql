@@ -14,12 +14,14 @@ CREATE TABLE schema_migrations (
 \ir ../src/db/migrations/002_create_authentication.sql
 \ir ../src/db/migrations/003_create_store_and_inquiries.sql
 \ir ../src/db/migrations/004_create_products.sql
+\ir ../src/db/migrations/005_translate_seed_categories.sql
 
 INSERT INTO schema_migrations (version)
 VALUES
   ('001_create_categories.sql'),
   ('002_create_authentication.sql'),
   ('003_create_store_and_inquiries.sql'),
-  ('004_create_products.sql');
+  ('004_create_products.sql'),
+  ('005_translate_seed_categories.sql');
 
 COMMIT;

@@ -218,6 +218,38 @@ describe("products API integration", { skip: !connectionString }, () => {
     const result = await pool.query("SELECT count(*)::integer AS count FROM products");
     assert.equal(result.rows[0].count, 20);
 
+    const categoryResult = await pool.query(
+      "SELECT name, description FROM categories ORDER BY id",
+    );
+    assert.deepEqual(
+      categoryResult.rows.map(({ name }) => name).sort(),
+      [
+        "Almacenamiento",
+        "Fuentes de alimentación",
+        "Memoria RAM",
+        "Placas madre",
+        "Procesadores",
+        "Tarjetas gráficas",
+      ].sort(),
+    );
+    assert.deepEqual(
+      Object.fromEntries(
+        categoryResult.rows.map(({ name, description }) => [name, description]),
+      ),
+      {
+        Almacenamiento: "Unidades SSD NVMe y almacenamiento de alta capacidad",
+        "Fuentes de alimentación":
+          "Fuentes de alimentación modulares y no modulares confiables",
+        "Memoria RAM":
+          "Kits de memoria RAM DDR4 y DDR5 para computadoras de escritorio",
+        "Placas madre": "Placas madre para plataformas AMD e Intel",
+        Procesadores:
+          "Procesadores para computadoras de videojuegos y productividad",
+        "Tarjetas gráficas":
+          "Tarjetas gráficas dedicadas para videojuegos de alto rendimiento",
+      },
+    );
+
     const publicResponse = await fetch(
       `${baseUrl}/api/v1/products?page=1&limit=100`,
     );

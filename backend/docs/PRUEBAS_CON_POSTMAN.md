@@ -103,6 +103,8 @@ WHERE id = <inquiryId>;
 
 ### 7. Recuperación de contraseña
 
+Para este TP no se integra un proveedor de correo real. Ejecutar este flujo en desarrollo o pruebas: la API devuelve `resetToken` en esos entornos y Postman lo guarda automáticamente. En producción la respuesta no incluye ese token.
+
 - Ejecutar `Autenticación / Solicitar recuperación de contraseña`. En desarrollo guarda `resetToken`.
 - Ejecutar `Autenticación / Restablecer contraseña`.
 - El token JWT anterior queda revocado.

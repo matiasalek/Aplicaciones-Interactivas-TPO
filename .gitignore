@@ -17,6 +17,9 @@ npm-debug.log*
 coverage/
 dist/
 
+# Temporary project files
+/tmp/
+
 # Project-local PostgreSQL data
 .postgres-data/
 

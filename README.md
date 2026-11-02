@@ -24,6 +24,8 @@ El alcance obligatorio del servidor está implementado:
 - Validaciones y respuestas de error JSON.
 - Pruebas automatizadas e integración real con PostgreSQL.
 
+No quedan funcionalidades obligatorias del backend pendientes de implementación dentro del alcance acordado para este TP. La interfaz web corresponde a una etapa separada y todavía no está implementada.
+
 ## Tecnologías
 
 - JavaScript con módulos CommonJS.
@@ -137,7 +139,7 @@ Authorization: Bearer <token>
 | `GET` | `/api/v1/profile` | Administrador | Obtiene el perfil. |
 | `PATCH` | `/api/v1/profile` | Administrador | Modifica nombre, apellido, correo o teléfono. |
 
-En desarrollo y pruebas, `forgot-password` devuelve `resetToken` para poder probar el flujo con Postman. En producción no lo expone; allí debe entregarse por un canal externo.
+En desarrollo y pruebas, `forgot-password` devuelve `resetToken` para poder probar el flujo completo con Postman, sin enviar un correo real. Esta es la modalidad acordada para el TP y no queda pendiente integrar un proveedor de correo. En producción el token no se expone en la respuesta.
 
 ### Información institucional
 
@@ -266,6 +268,6 @@ npm run test:integration
 ## Decisiones de alcance
 
 - Una publicación guarda una URL de imagen obligatoria. La gestión de múltiples imágenes figura como funcionalidad adicional en la consigna.
-- El envío real de correos también es una funcionalidad adicional. El flujo de recuperación está implementado, pero requiere integrar un proveedor de correo para producción.
+- El envío real de correos queda fuera del alcance acordado para este TP. La recuperación de contraseña está implementada y se prueba con el token devuelto en desarrollo y pruebas.
 - No se implementó una interfaz web por decisión expresa del proyecto.
 - No se implementaron carrito, pagos ni envíos porque no forman parte de la consigna.

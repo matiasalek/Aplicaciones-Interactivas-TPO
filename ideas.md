@@ -118,6 +118,8 @@ Las consultas deberán almacenarse en la base de datos. En el panel privado, el 
 
 La consigna permite elegir la base de datos y las herramientas complementarias. Para esta propuesta se recomienda:
 
+El backend ya está implementado con Node.js, Express, PostgreSQL mediante `pg` sin ORM, Zod, JWT y `bcryptjs`. Las propuestas de interfaz web de esta sección corresponden a una etapa futura.
+
 ### Interfaz web
 
 - **React + React Router:** tecnologías obligatorias para la interfaz y navegación.
@@ -129,19 +131,17 @@ La consigna permite elegir la base de datos y las herramientas complementarias. 
 ### Servidor
 
 - **Node.js + Express:** tecnologías obligatorias para construir la API REST.
-- **Zod, Joi o express-validator:** validaciones del lado del servidor. Aunque se compartan reglas con la interfaz web, el servidor siempre deberá validar por separado.
+- **Zod:** validaciones y normalización del lado del servidor, ya implementadas. El servidor siempre valida por separado.
 - **JWT:** autenticación del administrador.
 - **bcrypt:** resumen criptográfico seguro de contraseñas.
-- **Multer o Cloudinary:** almacenamiento de imágenes. Debe elegirse una estrategia antes de implementar productos.
-- **Nodemailer:** solamente si se implementa el envío de correos como funcionalidad adicional.
+- **Imágenes mediante URL:** estrategia implementada; cada producto guarda una URL de imagen obligatoria.
+- **Correo:** no se integra un proveedor real para este TP. La recuperación de contraseña se prueba con el token devuelto por la API en desarrollo y pruebas.
 
 ### Base de datos
 
-Se recomienda **PostgreSQL** porque el dominio tiene relaciones claras entre administradores, productos, categorías y consultas. Permite aplicar claves foráneas, restricciones y un índice `UNIQUE` para evitar correos duplicados.
+Se utiliza **PostgreSQL** porque el dominio tiene relaciones claras entre administradores, productos, categorías y consultas. Permite aplicar claves foráneas, restricciones e índices únicos para evitar correos duplicados.
 
-Como ORM conviene elegir **Prisma o Sequelize**, no ambos. Independientemente del ORM, la entrega deberá incluir el archivo SQL de creación de la base de datos solicitado por la consigna y un proceso de carga inicial con al menos 20 productos.
-
-MongoDB también sería válido porque la consigna permite NoSQL y puede garantizar correos únicos mediante un índice. PostgreSQL se recomienda por la estructura relacional del proyecto, no porque MongoDB sea incapaz de aplicar esas reglas.
+El acceso a datos está implementado mediante consultas parametrizadas con `pg`, sin ORM. El repositorio incluye el archivo SQL de creación de la base de datos y una carga inicial idempotente de seis categorías y veinte productos.
 
 ## Funcionalidades adicionales
 

@@ -18,13 +18,14 @@ El alcance obligatorio del servidor está implementado:
 - CRUD de categorías.
 - Catálogo y CRUD de productos.
 - Activación, desactivación y disponibilidad de productos.
+- Productos destacados administrables y filtro público de destacados.
 - Búsqueda, filtro por categoría, orden y paginación.
 - Formulario público y gestión administrativa de consultas.
 - 20 productos precargados.
 - Validaciones y respuestas de error JSON.
 - Pruebas automatizadas e integración real con PostgreSQL.
 
-No quedan funcionalidades obligatorias del backend pendientes de implementación dentro del alcance acordado para este TP. La interfaz web corresponde a una etapa separada y todavía no está implementada.
+No quedan funcionalidades obligatorias del backend pendientes de implementación dentro del alcance acordado para este TP. La interfaz web está implementada en el repositorio independiente [Frontend](https://github.com/matiasalek/Aplicaciones-Interactivas-TPO-Frontend).
 
 ## Tecnologías
 
@@ -174,6 +175,7 @@ Parámetros del listado:
 | `q` | Texto de búsqueda. |
 | `categoryId` | Identificador positivo. |
 | `availability` | `in_stock`, `out_of_stock`, `preorder`. |
+| `isFeatured` | `true` para destacados, `false` para los demás; omitir para todos. |
 | `sort` | `newest`, `name`, `price_asc`, `price_desc`. |
 | `page` | Página, desde 1. |
 | `limit` | Entre 1 y 100. |
@@ -192,6 +194,22 @@ Las rutas públicas nunca devuelven productos desactivados.
 
 El listado administrativo acepta los filtros públicos y `isActive=true|false`.
 
+### Productos destacados
+
+Cada producto incluye `isFeatured` en listados y detalles. Al crear, el campo es opcional y vale `false` por defecto; al editar se acepta un booleano JSON. Solo un administrador autenticado puede modificarlo:
+
+```http
+PATCH /api/v1/admin/products/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{"isFeatured": true}
+```
+
+`GET /api/v1/products?isFeatured=true` devuelve únicamente destacados activos, con los mismos filtros, orden y paginación del catálogo. El listado administrativo permite combinar `isFeatured` con `isActive`. Desactivar conserva la selección de destacado, pero oculta el producto de todas las rutas públicas; reactivar lo vuelve a publicar. No hay límite de destacados ni orden manual: se utiliza el orden solicitado, con `newest` por defecto. La disponibilidad se informa independientemente de la selección.
+
+Para actualizar una instalación existente, detener la API, ejecutar `npm run db:migrate` desde `backend/` y reiniciarla. La migración `006_add_featured_products.sql` agrega el campo sin borrar datos; los productos existentes quedan sin destacar. La carga inicial mantiene las selecciones administradas al ejecutarse nuevamente.
+
 ### Consultas
 
 | Método | Ruta | Acceso | Descripción |
@@ -203,6 +221,14 @@ El listado administrativo acepta los filtros públicos y `isActive=true|false`.
 | `DELETE` | `/api/v1/inquiries/:id` | Administrador | Elimina una consulta. |
 
 El listado acepta `status`, `page` y `limit`. Los estados son `pending`, `read` y `answered`.
+
+## Validaciones
+
+El contrato detallado está en [backend/docs/VALIDACIONES.md](backend/docs/VALIDACIONES.md). La API valida todos los formularios independientemente del frontend. Precio y categoría deben ser números JSON; se rechazan nulos, booleanos y cadenas. El precio admite hasta dos decimales sin redondeo de entradas inválidas. Los identificadores respetan el rango integer de PostgreSQL.
+
+Imágenes y redes requieren URLs completas HTTP/HTTPS de hasta 2000 caracteres. Los correos se validan después de quitar espacios exteriores y se normalizan a minúsculas. Los teléfonos requieren al menos cinco dígitos, hasta 50 caracteres y permiten separadores habituales y `+` al inicio, sin imponer un país.
+
+Registro y restablecimiento rechazan contraseñas que excedan 72 bytes UTF-8 además del rango de 8 a 72 caracteres, evitando truncamiento. La validación del inicio de sesión conserva la compatibilidad con credenciales existentes. No se agregan dependencias ni migraciones por estas correcciones.
 
 ## Base de datos
 
@@ -251,6 +277,8 @@ NODE_ENV=test \
 npm run test:integration
 ```
 
+Los resultados y las comprobaciones de actualización del extra de productos destacados están en [backend/docs/VERIFICACION_DESTACADOS.md](backend/docs/VERIFICACION_DESTACADOS.md).
+
 ## Comandos disponibles
 
 | Comando | Descripción |
@@ -269,5 +297,5 @@ npm run test:integration
 
 - Una publicación guarda una URL de imagen obligatoria. La gestión de múltiples imágenes figura como funcionalidad adicional en la consigna.
 - El envío real de correos queda fuera del alcance acordado para este TP. La recuperación de contraseña está implementada y se prueba con el token devuelto en desarrollo y pruebas.
-- No se implementó una interfaz web por decisión expresa del proyecto.
+- La interfaz web se mantiene en un repositorio independiente; este repositorio contiene el servidor.
 - No se implementaron carrito, pagos ni envíos porque no forman parte de la consigna.

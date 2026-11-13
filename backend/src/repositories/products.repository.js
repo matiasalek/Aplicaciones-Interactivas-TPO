@@ -6,6 +6,7 @@ const PRODUCT_COLUMNS = `
   products.price::float8 AS price,
   products.availability,
   products.is_active AS "isActive",
+  products.is_featured AS "isFeatured",
   products.created_at AS "createdAt",
   products.updated_at AS "updatedAt",
   json_build_object(
@@ -33,6 +34,11 @@ function createProductsRepository(database) {
       conditions.push(`products.is_active = $${parameters.length}`);
     }
 
+    if (query.isFeatured !== undefined) {
+      parameters.push(query.isFeatured);
+      conditions.push(`products.is_featured = $${parameters.length}`);
+    }
+
     if (query.q) {
       parameters.push(query.q);
       conditions.push(`
@@ -51,7 +57,8 @@ function createProductsRepository(database) {
       conditions.push(`products.availability = $${parameters.length}`);
     }
 
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const where =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     parameters.push(query.limit, (query.page - 1) * query.limit);
     const result = await database.query(
       `
@@ -101,9 +108,10 @@ function createProductsRepository(database) {
             image_url,
             price,
             availability,
-            is_active
+            is_active,
+            is_featured
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           RETURNING id
         `,
         [
@@ -114,6 +122,7 @@ function createProductsRepository(database) {
           values.price,
           values.availability,
           values.isActive,
+          values.isFeatured,
         ],
       );
       return findById(result.rows[0].id, { publicOnly: false });
@@ -128,6 +137,7 @@ function createProductsRepository(database) {
         price: "price",
         availability: "availability",
         isActive: "is_active",
+        isFeatured: "is_featured",
       };
       const fields = [];
       const parameters = [];
@@ -158,9 +168,10 @@ function createProductsRepository(database) {
     },
 
     async remove(id) {
-      const result = await database.query("DELETE FROM products WHERE id = $1", [
-        id,
-      ]);
+      const result = await database.query(
+        "DELETE FROM products WHERE id = $1",
+        [id],
+      );
       return result.rowCount > 0;
     },
   };

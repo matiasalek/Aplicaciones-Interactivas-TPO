@@ -228,6 +228,13 @@
       "name": "Productos públicos",
       "item": [
         {
+          "name": "Listar destacados",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/products?isFeatured=true&sort=newest&page=1&limit=12"
+          }
+        },
+        {
           "name": "Buscar y filtrar productos",
           "request": {
             "method": "GET",
@@ -295,6 +302,77 @@
             "method": "PATCH",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\n  \"isActive\": true,\n  \"availability\": \"in_stock\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Destacar producto",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"isFeatured\": true}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Listar destacados",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/products?isFeatured=true&limit=100"
+          }
+        },
+        {
+          "name": "Quitar destacado",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"isFeatured\": false}"
+            },
             "url": "{{baseUrl}}/api/v1/admin/products/{{productId}}"
           }
         },

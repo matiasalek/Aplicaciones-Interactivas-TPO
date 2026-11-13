@@ -1,18 +1,19 @@
 const { z } = require("zod");
+const {
+  emailSchema,
+  phoneSchema,
+  entityIdTextSchema,
+} = require("./common.schemas");
 
 const inquiryIdSchema = z.object({
-  id: z
-    .string()
-    .regex(/^\d+$/, "id must be a positive integer")
-    .transform(Number)
-    .pipe(z.number().int().positive("id must be a positive integer")),
+  id: entityIdTextSchema,
 });
 
 const createInquirySchema = z
   .object({
     name: z.string().trim().min(1).max(150),
-    email: z.email("email must be valid").trim().toLowerCase().max(320),
-    phone: z.string().trim().min(5).max(50).nullable().optional().default(null),
+    email: emailSchema,
+    phone: phoneSchema.nullable().optional().default(null),
     subject: z.string().trim().min(1).max(200),
     message: z.string().trim().min(1).max(10000),
   })

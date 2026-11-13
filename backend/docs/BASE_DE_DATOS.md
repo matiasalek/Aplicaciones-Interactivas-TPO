@@ -49,6 +49,7 @@ erDiagram
     numeric price
     varchar availability
     boolean is_active
+    boolean is_featured
   }
 
   STORE_INFORMATION {
@@ -81,6 +82,7 @@ erDiagram
 - Un producto siempre referencia una categoría existente.
 - PostgreSQL impide eliminar categorías con productos asociados.
 - Los precios no pueden ser negativos.
+- `products.is_featured` es obligatorio y vale `false` por defecto; es independiente de `is_active`. Las rutas públicas exigen siempre que el producto esté activo. Un índice parcial facilita el listado de destacados activos por fecha e identificador.
 - La disponibilidad se limita a `in_stock`, `out_of_stock` o `preorder`.
 - El estado de una consulta se limita a `pending`, `read` o `answered`.
 - Las contraseñas nunca se guardan en texto plano.
@@ -96,10 +98,11 @@ Las migraciones se ejecutan en orden y se registran en `schema_migrations`:
 3. `003_create_store_and_inquiries.sql`
 4. `004_create_products.sql`
 5. `005_translate_seed_categories.sql`
+6. `006_add_featured_products.sql`
 
 El ejecutor usa un bloqueo asesor de PostgreSQL para evitar ejecuciones concurrentes.
 
-Para la entrega también se incluye `database/create_database.sql`, un archivo SQL único de creación que incorpora las cinco migraciones. Debe ejecutarse sobre una base vacía:
+Para la entrega también se incluye `database/create_database.sql`, un archivo SQL único de creación que incorpora las seis migraciones. Debe ejecutarse sobre una base vacía:
 
 ```bash
 psql "$DATABASE_URL" -f database/create_database.sql
@@ -140,7 +143,8 @@ SELECT
   categories.name AS category,
   products.price,
   products.availability,
-  products.is_active
+  products.is_active,
+  products.is_featured
 FROM products
 JOIN categories ON categories.id = products.category_id
 ORDER BY products.id;

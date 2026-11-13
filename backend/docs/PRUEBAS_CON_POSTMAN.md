@@ -86,6 +86,20 @@ WHERE id = <productId>;
 
 Intentar eliminar su categoría mientras el producto existe debe responder `409 CATEGORY_IN_USE`.
 
+### 5.1. Productos destacados
+
+- Ejecutar `Administración de productos / Destacar producto` con el producto activo.
+- Ejecutar `Productos públicos / Listar destacados`: debe incluirlo y exponer `isFeatured: true`.
+- Desactivar el producto: debe desaparecer de destacados públicos, pero seguir en `Administración de productos / Listar destacados`, conservando `isFeatured: true`.
+- Activarlo nuevamente: debe reaparecer en destacados públicos.
+- Ejecutar `Administración de productos / Quitar destacado`: debe desaparecer de la selección y continuar en el catálogo general si está activo.
+- Combinar `isFeatured=true` con categoría, búsqueda y paginación; comprobar totales y resultados. Probar `isFeatured=false` para los no destacados.
+- Un PATCH sin token debe devolver `401`; `{"isFeatured":"false"}` y un filtro `isFeatured=otro` deben devolver `400`.
+
+```sql
+SELECT id, name, is_active, is_featured FROM products ORDER BY id;
+```
+
 ### 6. Consulta de visitante
 
 - Ejecutar `Consultas / Enviar consulta` sin autenticación. Guarda `inquiryId`.
@@ -145,3 +159,13 @@ ORDER BY created_at DESC;
 | Token ausente, inválido o revocado | `401` |
 | Recurso inexistente | `404` |
 | Duplicado o categoría en uso | `409` |
+
+
+## Regresión de validaciones
+
+- En alta y edición de productos, enviar precio `null`, `true`, `"1.23"`, `1.001` y `1.000000001`: debe responder `400 VALIDATION_ERROR`, sin crear ni modificar registros. Probar precios numéricos `0`, `0.29` y `123.45`: deben guardarse exactamente.
+- Probar categoría booleana y `2147483648`, y el mismo identificador en rutas de productos/categorías/consultas: debe devolver `400`, no un fallo de PostgreSQL.
+- Probar imagen o red con `ftp://example.com`, `javascript:alert(1)`, URL incompleta y más de 2000 caracteres: deben rechazarse. HTTP/HTTPS completas deben aceptarse.
+- Probar correo con puntos consecutivos y teléfono con letras o sin cinco dígitos: deben rechazarse. Correo con espacios exteriores/mayúsculas debe normalizarse; `+54 (11) 4444-5555` debe aceptarse.
+- En Registro y Restablecimiento, probar 19 emojis de cuatro bytes: deben rechazarse antes de generar un hash; 18 cumplen el límite. La confirmación de contraseña es un control del frontend.
+- Comprobar en SQL que los rechazos no cambien los registros anteriores. Las pruebas automáticas de integración verifican también esa conservación.

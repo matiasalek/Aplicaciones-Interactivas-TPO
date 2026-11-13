@@ -1,15 +1,14 @@
 const { z } = require("zod");
 
-const emailSchema = z
-  .email("email must be valid")
-  .trim()
-  .toLowerCase()
-  .max(320, "email must contain at most 320 characters");
+const { emailSchema, phoneSchema } = require("./common.schemas");
 
 const passwordSchema = z
   .string({ error: "password must be a string" })
   .min(8, "password must contain at least 8 characters")
-  .max(72, "password must contain at most 72 characters");
+  .max(72, "password must contain at most 72 characters")
+  .refine((value) => Buffer.byteLength(value, "utf8") <= 72, {
+    message: "password must contain at most 72 UTF-8 bytes",
+  });
 
 const firstNameSchema = z
   .string({ error: "firstName must be a string" })
@@ -22,12 +21,6 @@ const lastNameSchema = z
   .trim()
   .min(1, "lastName is required")
   .max(100, "lastName must contain at most 100 characters");
-
-const phoneSchema = z
-  .string({ error: "phone must be a string" })
-  .trim()
-  .min(5, "phone must contain at least 5 characters")
-  .max(50, "phone must contain at most 50 characters");
 
 const registerSchema = z
   .object({

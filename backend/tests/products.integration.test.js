@@ -122,23 +122,134 @@ describe("products API integration", { skip: !connectionString }, () => {
     assert.equal(list.meta.total, 1);
     assert.equal(list.data[0].id, created.id);
 
-    const getResponse = await fetch(
-      `${baseUrl}/api/v1/products/${created.id}`,
-    );
+    const getResponse = await fetch(`${baseUrl}/api/v1/products/${created.id}`);
     assert.equal(getResponse.status, 200);
 
-    const conflictResponse = await fetch(
-      `${baseUrl}/api/v1/admin/products`,
-      {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ ...productValues, name: "nova rtx 5090" }),
+    const conflictResponse = await fetch(`${baseUrl}/api/v1/admin/products`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
       },
-    );
+      body: JSON.stringify({ ...productValues, name: "nova rtx 5090" }),
+    });
     assert.equal(conflictResponse.status, 409);
+  });
+
+  it("rejects malformed product values before creating or updating records", async () => {
+    const original = (
+      await pool.query("SELECT * FROM products WHERE name = 'Nova RTX 5090'")
+    ).rows[0];
+    const countBefore = (
+      await pool.query("SELECT count(*)::integer AS count FROM products")
+    ).rows[0].count;
+    const values = {
+      name: "Producto inválido",
+      categoryId,
+      description: "Prueba de validación",
+      imageUrl: "https://example.com/product.png",
+      price: 10,
+    };
+    for (const [field, invalid] of [
+      ["price", null],
+      ["price", true],
+      ["price", ""],
+      ["price", "1.23"],
+      ["price", 1.001],
+      ["price", 1.000000001],
+      ["price", -1],
+      ["imageUrl", "javascript:alert(1)"],
+      ["imageUrl", "ftp://example.com/a.png"],
+      ["imageUrl", "https:example.com"],
+      ["imageUrl", "https://example.com/" + "a".repeat(2000)],
+      ["categoryId", 2147483648],
+      ["categoryId", true],
+      ["categoryId", [categoryId]],
+      ["categoryId", String(categoryId)],
+    ]) {
+      for (const [method, path, body] of [
+        ["POST", "/api/v1/admin/products", { ...values, [field]: invalid }],
+        [
+          "PATCH",
+          `/api/v1/admin/products/${original.id}`,
+          { [field]: invalid },
+        ],
+      ]) {
+        const response = await fetch(`${baseUrl}${path}`, {
+          method,
+          headers: {
+            authorization: `Bearer ${token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+        assert.equal(
+          response.status,
+          400,
+          `${method}: ${field}=${JSON.stringify(invalid)}`,
+        );
+        const error = (await response.json()).error;
+        assert.equal(error.code, "VALIDATION_ERROR");
+        assert.ok(error.details.some((detail) => detail.field === field));
+      }
+    }
+    for (const path of [
+      "/api/v1/products/2147483648",
+      "/api/v1/admin/products/2147483648",
+      "/api/v1/categories/2147483648",
+      "/api/v1/inquiries/2147483648",
+      "/api/v1/products?categoryId=2147483648",
+    ]) {
+      const response = await fetch(`${baseUrl}${path}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      assert.equal(response.status, 400, path);
+      assert.equal((await response.json()).error.code, "VALIDATION_ERROR");
+    }
+    assert.deepEqual(
+      (await pool.query("SELECT * FROM products WHERE id = $1", [original.id]))
+        .rows[0],
+      original,
+    );
+    assert.equal(
+      (await pool.query("SELECT count(*)::integer AS count FROM products"))
+        .rows[0].count,
+      countBefore,
+    );
+  });
+
+  it("stores valid cent values and zero without rounding or changing product flags", async () => {
+    const id = (
+      await pool.query("SELECT id FROM products WHERE name = 'Nova RTX 5090'")
+    ).rows[0].id;
+    try {
+      for (const price of [0, 0.29, 123.45, 9999999999.99]) {
+        const response = await fetch(`${baseUrl}/api/v1/admin/products/${id}`, {
+          method: "PATCH",
+          headers: {
+            authorization: `Bearer ${token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ price }),
+        });
+        assert.equal(response.status, 200);
+        const product = (await response.json()).data;
+        assert.equal(product.price, price);
+        assert.equal(product.isActive, true);
+        assert.equal(product.isFeatured, false);
+        assert.equal(
+          Number(
+            (await pool.query("SELECT price FROM products WHERE id = $1", [id]))
+              .rows[0].price,
+          ),
+          price,
+        );
+      }
+    } finally {
+      await pool.query("UPDATE products SET price = 2499999.99 WHERE id = $1", [
+        id,
+      ]);
+    }
   });
 
   it("deactivates products and retains administrator visibility", async () => {
@@ -215,7 +326,9 @@ describe("products API integration", { skip: !connectionString }, () => {
     await seed();
     await seed();
 
-    const result = await pool.query("SELECT count(*)::integer AS count FROM products");
+    const result = await pool.query(
+      "SELECT count(*)::integer AS count FROM products",
+    );
     assert.equal(result.rows[0].count, 20);
 
     const categoryResult = await pool.query(

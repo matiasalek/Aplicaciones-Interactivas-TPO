@@ -179,6 +179,87 @@ describe(
       assert.equal(missingResponse.status, 404);
     });
 
+    it("rejects invalid store URLs and contact fields without persisting them", async () => {
+      const original = (
+        await pool.query("SELECT * FROM store_information WHERE id = 1")
+      ).rows[0];
+      const store = {
+        name: original.name,
+        description: original.description,
+        address: original.address,
+        phone: original.phone,
+        socialLinks: original.social_links,
+        openingHours: original.opening_hours,
+      };
+      for (const changes of [
+        { phone: "abcde" },
+        { socialLinks: { website: "javascript:alert(1)" } },
+        { socialLinks: { instagram: "ftp://example.com" } },
+        { socialLinks: { website: "https://example.com/" + "a".repeat(2000) } },
+      ]) {
+        const response = await fetch(`${baseUrl}/api/v1/store`, {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ...store, ...changes }),
+        });
+        assert.equal(response.status, 400);
+        const error = (await response.json()).error;
+        assert.equal(error.code, "VALIDATION_ERROR");
+        assert.ok(
+          error.details.some(
+            (detail) =>
+              detail.field === "phone" ||
+              detail.field.startsWith("socialLinks."),
+          ),
+        );
+      }
+      assert.deepEqual(
+        (await pool.query("SELECT * FROM store_information WHERE id = 1"))
+          .rows[0],
+        original,
+      );
+      const inquiry = {
+        name: "Ana",
+        email: "ana@example.com",
+        subject: "Consulta",
+        message: "Hola",
+      };
+      const before = (
+        await pool.query("SELECT count(*)::integer AS count FROM inquiries")
+      ).rows[0].count;
+      for (const changes of [
+        { phone: "abcde" },
+        { phone: "-----" },
+        { email: "ana..p@example.com" },
+      ]) {
+        const response = await fetch(`${baseUrl}/api/v1/inquiries`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...inquiry, ...changes }),
+        });
+        assert.equal(response.status, 400);
+        assert.equal((await response.json()).error.code, "VALIDATION_ERROR");
+      }
+      assert.equal(
+        (await pool.query("SELECT count(*)::integer AS count FROM inquiries"))
+          .rows[0].count,
+        before,
+      );
+      const response = await fetch(`${baseUrl}/api/v1/inquiries`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...inquiry, email: " ANA@EXAMPLE.COM " }),
+      });
+      assert.equal(response.status, 201);
+      const { data } = await response.json();
+      assert.equal(data.email, "ana@example.com");
+      assert.equal(data.phone, null);
+      await pool.query("DELETE FROM inquiries WHERE id = $1", [data.id]);
+    });
+
     it("validates public inquiry data", async () => {
       const response = await fetch(`${baseUrl}/api/v1/inquiries`, {
         method: "POST",

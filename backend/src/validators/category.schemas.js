@@ -1,11 +1,8 @@
 const { z } = require("zod");
+const { entityIdTextSchema } = require("./common.schemas");
 
 const categoryIdSchema = z.object({
-  id: z
-    .string()
-    .regex(/^\d+$/, "id must be a positive integer")
-    .transform(Number)
-    .pipe(z.number().int().positive("id must be a positive integer")),
+  id: entityIdTextSchema,
 });
 
 const nameSchema = z

@@ -95,10 +95,7 @@ describe("authentication API integration", { skip: !connectionString }, () => {
       body: JSON.stringify({ phone: "+54 11 9999 0000" }),
     });
     assert.equal(updateResponse.status, 200);
-    assert.equal(
-      (await updateResponse.json()).data.phone,
-      "+54 11 9999 0000",
-    );
+    assert.equal((await updateResponse.json()).data.phone, "+54 11 9999 0000");
 
     const logoutResponse = await fetch(`${baseUrl}/api/v1/auth/logout`, {
       method: "POST",
@@ -135,17 +132,14 @@ describe("authentication API integration", { skip: !connectionString }, () => {
     const resetToken = (await forgotResponse.json()).data.resetToken;
     assert.match(resetToken, /^[a-f0-9]{64}$/);
 
-    const resetResponse = await fetch(
-      `${baseUrl}/api/v1/auth/reset-password`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          token: resetToken,
-          password: "NewStrongPass456!",
-        }),
-      },
-    );
+    const resetResponse = await fetch(`${baseUrl}/api/v1/auth/reset-password`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        token: resetToken,
+        password: "NewStrongPass456!",
+      }),
+    });
     assert.equal(resetResponse.status, 204);
 
     const revokedResponse = await fetch(`${baseUrl}/api/v1/profile`, {
@@ -172,6 +166,90 @@ describe("authentication API integration", { skip: !connectionString }, () => {
       }),
     });
     assert.equal(newLoginResponse.status, 200);
+  });
+
+  it("validates phones and UTF-8 passwords and normalizes email before authentication", async () => {
+    const email = `validation-${Date.now()}@example.com`;
+    const values = {
+      firstName: "Ana",
+      lastName: "Prueba",
+      email,
+      phone: "+54 (11) 4444-5555",
+      password: "Segura123!",
+    };
+    for (const [field, value] of [
+      ["phone", "abcde"],
+      ["phone", "12-34"],
+      ["phone", "-----"],
+      ["email", "ana..p@example.com"],
+      ["password", "é".repeat(37)],
+      ["password", "😀".repeat(19)],
+    ]) {
+      const response = await fetch(`${baseUrl}/api/v1/auth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...values, [field]: value }),
+      });
+      assert.equal(response.status, 400);
+      assert.ok(
+        (await response.json()).error.details.some(
+          (detail) => detail.field === field,
+        ),
+      );
+    }
+    const response = await fetch(`${baseUrl}/api/v1/auth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...values, email: ` ${email.toUpperCase()} ` }),
+    });
+    assert.equal(response.status, 201);
+    const { data } = await response.json();
+    try {
+      assert.equal(data.user.email, email);
+      const login = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: ` ${email.toUpperCase()} `,
+          password: values.password,
+        }),
+      });
+      assert.equal(login.status, 200);
+      const invalidProfile = await fetch(`${baseUrl}/api/v1/profile`, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${data.token}`,
+        },
+        body: JSON.stringify({ phone: "abcde" }),
+      });
+      assert.equal(invalidProfile.status, 400);
+      assert.equal(
+        (
+          await pool.query("SELECT phone FROM administrators WHERE id = $1", [
+            data.user.id,
+          ])
+        ).rows[0].phone,
+        values.phone,
+      );
+      const invalidReset = await fetch(
+        `${baseUrl}/api/v1/auth/reset-password`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            token: "a".repeat(64),
+            password: "é".repeat(37),
+          }),
+        },
+      );
+      assert.equal(invalidReset.status, 400);
+      assert.equal((await invalidReset.json()).error.code, "VALIDATION_ERROR");
+    } finally {
+      await pool.query("DELETE FROM administrators WHERE id = $1", [
+        data.user.id,
+      ]);
+    }
   });
 
   it("protects administrator endpoints", async () => {

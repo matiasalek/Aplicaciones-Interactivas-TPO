@@ -1,12 +1,24 @@
 const database = require("./database");
 
 const categories = [
-  ["Procesadores", "Procesadores para computadoras de videojuegos y productividad"],
-  ["Tarjetas gráficas", "Tarjetas gráficas dedicadas para videojuegos de alto rendimiento"],
+  [
+    "Procesadores",
+    "Procesadores para computadoras de videojuegos y productividad",
+  ],
+  [
+    "Tarjetas gráficas",
+    "Tarjetas gráficas dedicadas para videojuegos de alto rendimiento",
+  ],
   ["Placas madre", "Placas madre para plataformas AMD e Intel"],
-  ["Memoria RAM", "Kits de memoria RAM DDR4 y DDR5 para computadoras de escritorio"],
+  [
+    "Memoria RAM",
+    "Kits de memoria RAM DDR4 y DDR5 para computadoras de escritorio",
+  ],
   ["Almacenamiento", "Unidades SSD NVMe y almacenamiento de alta capacidad"],
-  ["Fuentes de alimentación", "Fuentes de alimentación modulares y no modulares confiables"],
+  [
+    "Fuentes de alimentación",
+    "Fuentes de alimentación modulares y no modulares confiables",
+  ],
 ];
 
 const products = [
@@ -29,7 +41,12 @@ const products = [
   ["Crucial P3 Plus NVMe 1TB", "Almacenamiento", 129999, "out_of_stock"],
   ["Corsair RM750e 750W", "Fuentes de alimentación", 169999, "in_stock"],
   ["Seasonic Focus GX-850", "Fuentes de alimentación", 229999, "in_stock"],
-  ["Cooler Master MWE Gold 650W", "Fuentes de alimentación", 139999, "preorder"],
+  [
+    "Cooler Master MWE Gold 650W",
+    "Fuentes de alimentación",
+    139999,
+    "preorder",
+  ],
 ];
 
 function imageUrlFor(name) {
@@ -89,9 +106,17 @@ async function seed() {
         ],
       );
     }
+    await client.query(`
+      INSERT INTO product_images (product_id, position, url)
+      SELECT p.id, 0, p.image_url FROM products p
+      WHERE NOT EXISTS (SELECT 1 FROM product_images i WHERE i.product_id = p.id)
+      ON CONFLICT (product_id, position) DO NOTHING
+    `);
   });
 
-  console.log(`Seed complete: ${categories.length} categories and ${products.length} products.`);
+  console.log(
+    `Seed complete: ${categories.length} categories and ${products.length} products.`,
+  );
 }
 
 if (require.main === module) {

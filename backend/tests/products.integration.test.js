@@ -32,6 +32,8 @@ describe("products API integration", { skip: !connectionString }, () => {
     const database = {
       checkConnection: () => pool.query("SELECT 1"),
       query: (text, values) => pool.query(text, values),
+      withTransaction: (callback) =>
+        defaultDatabase.withTransaction(callback, pool),
     };
     server = createApp({ database }).listen(0, "127.0.0.1");
     await once(server, "listening");

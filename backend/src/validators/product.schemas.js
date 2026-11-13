@@ -11,6 +11,38 @@ const productIdSchema = z.object({
 
 const categoryIdSchema = entityIdSchema;
 const availabilitySchema = z.enum(["in_stock", "out_of_stock", "preorder"]);
+const imageUrlsSchema = z
+  .array(webUrlSchema)
+  .min(1)
+  .max(10)
+  .superRefine((urls, context) => {
+    const seen = new Set();
+    urls.forEach((url, index) => {
+      let key;
+      try {
+        key = new URL(url).href;
+      } catch {
+        return;
+      }
+      if (seen.has(key))
+        context.addIssue({
+          code: "custom",
+          path: [index],
+          message: "image URLs must not be repeated",
+        });
+      seen.add(key);
+    });
+  });
+
+function exclusiveImages(values, context) {
+  if (values.imageUrl !== undefined && values.imageUrls !== undefined)
+    context.addIssue({
+      code: "custom",
+      path: ["imageUrls"],
+      message: "send imageUrl or imageUrls, not both",
+    });
+}
+
 const productFields = {
   categoryId: categoryIdSchema,
   name: z.string().trim().min(1).max(200),
@@ -31,11 +63,22 @@ const productFields = {
 const createProductSchema = z
   .object({
     ...productFields,
+    imageUrl: webUrlSchema.optional(),
+    imageUrls: imageUrlsSchema.optional(),
     availability: availabilitySchema.default("in_stock"),
     isActive: z.boolean().default(true),
     isFeatured: z.boolean().default(false),
   })
-  .strict();
+  .strict()
+  .superRefine((values, context) => {
+    exclusiveImages(values, context);
+    if (values.imageUrl === undefined && values.imageUrls === undefined)
+      context.addIssue({
+        code: "custom",
+        path: ["imageUrls"],
+        message: "at least one image is required",
+      });
+  });
 
 const updateProductSchema = z
   .object({
@@ -43,6 +86,7 @@ const updateProductSchema = z
     name: productFields.name.optional(),
     description: productFields.description.optional(),
     imageUrl: productFields.imageUrl.optional(),
+    imageUrls: imageUrlsSchema.optional(),
     price: productFields.price.optional(),
     availability: productFields.availability.optional(),
     isActive: productFields.isActive.optional(),
@@ -51,7 +95,8 @@ const updateProductSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, {
     message: "at least one field must be provided",
-  });
+  })
+  .superRefine(exclusiveImages);
 
 const publicProductQuerySchema = z
   .object({

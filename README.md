@@ -19,6 +19,7 @@ El alcance obligatorio del servidor está implementado:
 - Catálogo y CRUD de productos.
 - Activación, desactivación y disponibilidad de productos.
 - Productos destacados administrables y filtro público de destacados.
+- Galerías de una a diez imágenes mediante URLs, con orden e imagen principal.
 - Búsqueda, filtro por categoría, orden y paginación.
 - Formulario público y gestión administrativa de consultas.
 - 20 productos precargados.
@@ -210,6 +211,31 @@ Content-Type: application/json
 
 Para actualizar una instalación existente, detener la API, ejecutar `npm run db:migrate` desde `backend/` y reiniciarla. La migración `006_add_featured_products.sql` agrega el campo sin borrar datos; los productos existentes quedan sin destacar. La carga inicial mantiene las selecciones administradas al ejecutarse nuevamente.
 
+### Galerías de imágenes
+
+Listados y detalles incluyen `imageUrls`, un arreglo ordenado de una a diez URLs, y mantienen `imageUrl` como primera imagen por compatibilidad. Para crear o reemplazar una galería se envía `imageUrls`; la primera entrada es la principal:
+
+```http
+PATCH /api/v1/admin/products/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "imageUrls": [
+    "https://example.com/frente.png",
+    "https://example.com/parte-posterior.png"
+  ]
+}
+```
+
+Cada URL debe ser completa, HTTP/HTTPS y de hasta 2000 caracteres. Se recortan espacios exteriores y se rechazan URLs repetidas tras normalizarlas. Se rechazan galerías vacías o con más de diez imágenes y solicitudes que mezclen `imageUrl` e `imageUrls`. El orden del arreglo define el orden de la galería; quitar entradas elimina sus referencias del producto, sin borrar archivos remotos.
+
+El contrato anterior sigue funcionando: crear con `imageUrl` genera una galería de una imagen; editar con `imageUrl` reemplaza solamente la principal y conserva las secundarias, sin duplicar la nueva principal si ya estaba entre ellas. Editar otros campos conserva toda la galería. Las escrituras del producto y sus imágenes son transaccionales; se bloquea la fila al editar para impedir colecciones mezcladas ante solicitudes simultáneas.
+
+La migración `007_create_product_images.sql` copia la imagen anterior de cada producto a la posición inicial sin modificar sus otros datos. Detener la API, ejecutar `npm run db:migrate` y reiniciarla. No recrear la base. El seed crea una imagen para los productos nuevos y respeta galerías administradas al repetirse. Eliminar un producto elimina sus imágenes en cascada.
+
+La API guarda URLs; no descarga imágenes ni sube archivos. No se agregaron dependencias. La verificación está en [backend/docs/VERIFICACION_GALERIAS.md](backend/docs/VERIFICACION_GALERIAS.md).
+
 ### Consultas
 
 | Método | Ruta | Acceso | Descripción |
@@ -295,7 +321,7 @@ Los resultados y las comprobaciones de actualización del extra de productos des
 
 ## Decisiones de alcance
 
-- Una publicación guarda una URL de imagen obligatoria. La gestión de múltiples imágenes figura como funcionalidad adicional en la consigna.
+- Una publicación guarda de una a diez URLs de imágenes ordenadas; la primera es la principal. Se mantiene el campo anterior `imageUrl` por compatibilidad. No se suben archivos.
 - El envío real de correos queda fuera del alcance acordado para este TP. La recuperación de contraseña está implementada y se prueba con el token devuelto en desarrollo y pruebas.
 - La interfaz web se mantiene en un repositorio independiente; este repositorio contiene el servidor.
 - No se implementaron carrito, pagos ni envíos porque no forman parte de la consigna.

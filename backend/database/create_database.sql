@@ -16,6 +16,7 @@ CREATE TABLE schema_migrations (
 \ir ../src/db/migrations/004_create_products.sql
 \ir ../src/db/migrations/005_translate_seed_categories.sql
 \ir ../src/db/migrations/006_add_featured_products.sql
+\ir ../src/db/migrations/007_create_product_images.sql
 
 INSERT INTO schema_migrations (version)
 VALUES
@@ -24,6 +25,7 @@ VALUES
   ('003_create_store_and_inquiries.sql'),
   ('004_create_products.sql'),
   ('005_translate_seed_categories.sql'),
-  ('006_add_featured_products.sql');
+  ('006_add_featured_products.sql'),
+  ('007_create_product_images.sql');
 
 COMMIT;

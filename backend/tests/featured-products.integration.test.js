@@ -42,6 +42,8 @@ describe(
         database: {
           checkConnection: () => pool.query("SELECT 1"),
           query: (text, values) => pool.query(text, values),
+          withTransaction: (callback) =>
+            database.withTransaction(callback, pool),
         },
       }).listen(0, "127.0.0.1");
       await once(server, "listening");

@@ -27,8 +27,8 @@ function query(text, values) {
   return getPool().query(text, values);
 }
 
-async function withTransaction(callback) {
-  const client = await getPool().connect();
+async function withTransaction(callback, transactionPool = getPool()) {
+  const client = await transactionPool.connect();
 
   try {
     await client.query("BEGIN");

@@ -75,7 +75,7 @@ El administrador deberá poder:
 - Eliminar productos.
 - Activar o desactivar productos.
 
-Cada publicación deberá guardar nombre, categoría, descripción, al menos una imagen, precio cuando corresponda y estado de disponibilidad. La gestión de múltiples imágenes puede tratarse como una mejora adicional.
+Cada publicación deberá guardar nombre, categoría, descripción, al menos una imagen, precio cuando corresponda y estado de disponibilidad. La gestión de múltiples imágenes está implementada como mejora adicional mediante galerías de URLs ordenadas.
 
 ### Categorías
 
@@ -134,7 +134,7 @@ El backend ya está implementado con Node.js, Express, PostgreSQL mediante `pg` 
 - **Zod:** validaciones y normalización del lado del servidor, ya implementadas. El servidor siempre valida por separado.
 - **JWT:** autenticación del administrador.
 - **bcrypt:** resumen criptográfico seguro de contraseñas.
-- **Imágenes mediante URL:** estrategia implementada; cada producto guarda una URL de imagen obligatoria.
+- **Imágenes mediante URL:** cada producto admite de una a diez URLs ordenadas; la primera es la principal. Se mantiene el contrato anterior `imageUrl` y no se suben archivos.
 - **Correo:** no se integra un proveedor real para este TP. La recuperación de contraseña se prueba con el token devuelto por la API en desarrollo y pruebas.
 
 ### Base de datos
@@ -149,7 +149,7 @@ La consigna otorga puntaje adicional por:
 
 - Envío de correos desde el formulario de contacto.
 - Panel con métricas y estadísticas.
-- Gestión de múltiples imágenes por publicación.
+- Gestión de múltiples imágenes por publicación: implementada mediante URLs.
 - Buscador avanzado.
 - Sistema de promociones o novedades.
 - Productos destacados.

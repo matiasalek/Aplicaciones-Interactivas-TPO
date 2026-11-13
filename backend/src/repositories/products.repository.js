@@ -3,6 +3,11 @@ const PRODUCT_COLUMNS = `
   products.name,
   products.description,
   products.image_url AS "imageUrl",
+  COALESCE(
+    (SELECT json_agg(images.url ORDER BY images.position)
+     FROM product_images AS images WHERE images.product_id = products.id),
+    json_build_array(products.image_url)
+  ) AS "imageUrls",
   products.price::float8 AS price,
   products.availability,
   products.is_active AS "isActive",
@@ -21,6 +26,16 @@ const SORT_SQL = {
   price_asc: "products.price ASC, products.id ASC",
   price_desc: "products.price DESC, products.id DESC",
 };
+
+async function replaceImages(client, id, urls) {
+  await client.query("DELETE FROM product_images WHERE product_id = $1", [id]);
+  await client.query(
+    `INSERT INTO product_images (product_id, position, url)
+     SELECT $1, (ordinality - 1)::smallint, url
+     FROM unnest($2::text[]) WITH ORDINALITY AS images(url, ordinality)`,
+    [id, urls],
+  );
+}
 
 function createProductsRepository(database) {
   async function findAll(query, { publicOnly }) {
@@ -80,8 +95,8 @@ function createProductsRepository(database) {
     return { items, total };
   }
 
-  async function findById(id, { publicOnly }) {
-    const result = await database.query(
+  async function findById(id, { publicOnly }, executor = database) {
+    const result = await executor.query(
       `
         SELECT ${PRODUCT_COLUMNS}
         FROM products
@@ -99,72 +114,83 @@ function createProductsRepository(database) {
     findById,
 
     async create(values) {
-      const result = await database.query(
-        `
-          INSERT INTO products (
-            category_id,
-            name,
-            description,
-            image_url,
-            price,
-            availability,
-            is_active,
-            is_featured
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          RETURNING id
-        `,
-        [
-          values.categoryId,
-          values.name,
-          values.description,
-          values.imageUrl,
-          values.price,
-          values.availability,
-          values.isActive,
-          values.isFeatured,
-        ],
-      );
-      return findById(result.rows[0].id, { publicOnly: false });
+      return database.withTransaction(async (client) => {
+        const imageUrls = values.imageUrls ?? [values.imageUrl];
+        const result = await client.query(
+          `INSERT INTO products (
+            category_id, name, description, image_url, price, availability, is_active, is_featured
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+          [
+            values.categoryId,
+            values.name,
+            values.description,
+            imageUrls[0],
+            values.price,
+            values.availability,
+            values.isActive,
+            values.isFeatured,
+          ],
+        );
+        const id = result.rows[0].id;
+        await replaceImages(client, id, imageUrls);
+        return findById(id, { publicOnly: false }, client);
+      });
     },
 
     async update(id, values) {
-      const columnByProperty = {
-        categoryId: "category_id",
-        name: "name",
-        description: "description",
-        imageUrl: "image_url",
-        price: "price",
-        availability: "availability",
-        isActive: "is_active",
-        isFeatured: "is_featured",
-      };
-      const fields = [];
-      const parameters = [];
+      return database.withTransaction(async (client) => {
+        // Serializar ediciones de la galería y devolver datos del mismo commit.
+        const existing = await client.query(
+          "SELECT id FROM products WHERE id = $1 FOR UPDATE",
+          [id],
+        );
+        if (!existing.rows[0]) return null;
 
-      for (const [property, column] of Object.entries(columnByProperty)) {
-        if (values[property] !== undefined) {
-          parameters.push(values[property]);
-          fields.push(`${column} = $${parameters.length}`);
+        let imageUrls = values.imageUrls;
+        if (values.imageUrl !== undefined) {
+          const current = await client.query(
+            "SELECT url FROM product_images WHERE product_id = $1 ORDER BY position",
+            [id],
+          );
+          const primaryKey = new URL(values.imageUrl).href;
+          imageUrls = [
+            values.imageUrl,
+            ...current.rows
+              .slice(1)
+              .map((row) => row.url)
+              .filter((url) => new URL(url).href !== primaryKey),
+          ];
         }
-      }
 
-      parameters.push(id);
-      const result = await database.query(
-        `
-          UPDATE products
-          SET ${fields.join(", ")}
-          WHERE id = $${parameters.length}
-          RETURNING id
-        `,
-        parameters,
-      );
-
-      if (!result.rows[0]) {
-        return null;
-      }
-
-      return findById(result.rows[0].id, { publicOnly: false });
+        const columnByProperty = {
+          categoryId: "category_id",
+          name: "name",
+          description: "description",
+          price: "price",
+          availability: "availability",
+          isActive: "is_active",
+          isFeatured: "is_featured",
+        };
+        const fields = [];
+        const parameters = [];
+        for (const [property, column] of Object.entries(columnByProperty)) {
+          if (values[property] !== undefined) {
+            parameters.push(values[property]);
+            fields.push(`${column} = $${parameters.length}`);
+          }
+        }
+        if (imageUrls !== undefined) {
+          parameters.push(imageUrls[0]);
+          fields.push(`image_url = $${parameters.length}`);
+        }
+        parameters.push(id);
+        await client.query(
+          `UPDATE products SET ${fields.join(", ")} WHERE id = $${parameters.length}`,
+          parameters,
+        );
+        if (imageUrls !== undefined) await replaceImages(client, id, imageUrls);
+        return findById(id, { publicOnly: false }, client);
+      });
     },
 
     async remove(id) {

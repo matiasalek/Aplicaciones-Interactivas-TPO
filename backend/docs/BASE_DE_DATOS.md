@@ -9,6 +9,7 @@ erDiagram
   ADMINISTRATORS ||--o{ AUTH_SESSIONS : inicia
   ADMINISTRATORS ||--o{ PASSWORD_RESET_TOKENS : solicita
   CATEGORIES ||--o{ PRODUCTS : clasifica
+  PRODUCTS ||--o{ PRODUCT_IMAGES : contiene
 
   ADMINISTRATORS {
     int id PK
@@ -52,6 +53,12 @@ erDiagram
     boolean is_featured
   }
 
+  PRODUCT_IMAGES {
+    int product_id PK,FK
+    smallint position PK
+    text url
+  }
+
   STORE_INFORMATION {
     smallint id PK
     varchar name
@@ -74,6 +81,14 @@ erDiagram
 ```
 
 `store_information` es una tabla de una sola fila: solamente permite el registro con `id = 1`.
+
+## Galerías
+
+`product_images` guarda una URL y una posición por fila. La clave compuesta `(product_id, position)` impide posiciones repetidas y permite leerlas en orden. Las posiciones se limitan a 0–9 y cada URL debe ser no vacía y tener hasta 2000 caracteres. La referencia al producto tiene `ON DELETE CASCADE`.
+
+La API exige de una a diez URLs completas HTTP/HTTPS sin duplicados. `products.image_url` conserva la principal por compatibilidad y se actualiza junto con la galería dentro de una transacción. Las ediciones bloquean la fila del producto con `FOR UPDATE`; un fallo al guardar una imagen revierte también los demás cambios. Eliminar imágenes y ordenar se realiza enviando el arreglo final completo.
+
+La migración 007 copia todas las imágenes anteriores a la posición 0 sin modificar los productos, incluidos los inactivos y destacados. El seed solamente incorpora la imagen inicial cuando el producto todavía no tiene galería; no reemplaza selecciones del administrador. La lectura de colecciones usa una subconsulta agregada para no duplicar productos en los listados.
 
 ## Integridad
 
@@ -99,10 +114,11 @@ Las migraciones se ejecutan en orden y se registran en `schema_migrations`:
 4. `004_create_products.sql`
 5. `005_translate_seed_categories.sql`
 6. `006_add_featured_products.sql`
+7. `007_create_product_images.sql`
 
 El ejecutor usa un bloqueo asesor de PostgreSQL para evitar ejecuciones concurrentes.
 
-Para la entrega también se incluye `database/create_database.sql`, un archivo SQL único de creación que incorpora las seis migraciones. Debe ejecutarse sobre una base vacía:
+Para la entrega también se incluye `database/create_database.sql`, un archivo SQL único de creación que incorpora las siete migraciones. Debe ejecutarse sobre una base vacía:
 
 ```bash
 psql "$DATABASE_URL" -f database/create_database.sql
@@ -148,6 +164,10 @@ SELECT
 FROM products
 JOIN categories ON categories.id = products.category_id
 ORDER BY products.id;
+
+SELECT product_id, position, url
+FROM product_images
+ORDER BY product_id, position;
 
 SELECT * FROM store_information;
 

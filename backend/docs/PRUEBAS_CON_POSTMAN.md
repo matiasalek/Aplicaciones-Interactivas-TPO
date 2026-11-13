@@ -100,6 +100,22 @@ Intentar eliminar su categoría mientras el producto existe debe responder `409 
 SELECT id, name, is_active, is_featured FROM products ORDER BY id;
 ```
 
+### 5.2. Galerías de imágenes
+
+- `Crear producto` envía ahora dos URLs en `imageUrls`. Comprobar la colección ordenada y que `imageUrl` coincide con la primera.
+- Ejecutar `Actualizar galería de imágenes`: cambia la principal y agrega otra imagen. Verificar el orden en detalle público y administrativo y en `product_images`.
+- Quitar una entrada del arreglo y repetir PATCH: debe desaparecer solamente esa referencia. Enviar una sola URL es válido.
+- Probar `imageUrls: []`, más de diez entradas, FTP y URLs repetidas: deben devolver `400 VALIDATION_ERROR` y conservar el producto y su galería anteriores.
+- Probar PATCH solamente de precio o visibilidad: debe conservar las imágenes. Probar el campo anterior `imageUrl`: debe cambiar la principal sin perder secundarias. No mezclar ambos campos en una solicitud.
+- Eliminar el producto y comprobar que sus filas en `product_images` desaparezcan.
+
+```sql
+SELECT product_id, position, url
+FROM product_images
+WHERE product_id = <productId>
+ORDER BY position;
+```
+
 ### 6. Consulta de visitante
 
 - Ejecutar `Consultas / Enviar consulta` sin autenticación. Guarda `inquiryId`.

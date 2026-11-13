@@ -18,6 +18,12 @@ Los esquemas reutilizables están en `src/validators/common.schemas.js`. La conf
 
 Las entradas inválidas devuelven `400 VALIDATION_ERROR`, con `error.details` para los campos correspondientes. El rechazo ocurre antes de escribir registros. Estas correcciones no requieren otra migración, no reescriben datos existentes y no agregan dependencias.
 
+## Galerías
+
+Alta acepta `imageUrls` o el campo anterior `imageUrl`, sin mezclar ambos. La colección requiere entre una y diez URLs completas HTTP/HTTPS, recortadas y con hasta 2000 caracteres cada una. Se rechazan valores no textuales, colecciones vacías, más de diez imágenes y URLs equivalentes repetidas al normalizar con `URL`. Los errores señalan el índice correspondiente, por ejemplo `imageUrls.1`.
+
+PATCH con `imageUrls` reemplaza la colección completa; con `imageUrl` cambia la principal conservando secundarias. Omitir ambos campos conserva las imágenes. Se guardan producto y galería en una sola transacción, con bloqueo de la fila al editar. Las imágenes anteriores se migran mediante `007_create_product_images.sql`.
+
 ## Comprobaciones
 
 Las pruebas rápidas incluyen precios límite, cero y centavos, protocolos de URL, longitudes, identificadores, booleanos, correos normalizados, teléfonos y contraseñas UTF-8. Las pruebas HTTP con PostgreSQL real comprueban que las entradas inválidas no creen productos ni modifiquen registros existentes, y que los valores válidos se persistan sin redondeo.

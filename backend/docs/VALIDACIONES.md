@@ -24,6 +24,12 @@ Alta acepta `imageUrls` o el campo anterior `imageUrl`, sin mezclar ambos. La co
 
 PATCH con `imageUrls` reemplaza la colección completa; con `imageUrl` cambia la principal conservando secundarias. Omitir ambos campos conserva las imágenes. Se guardan producto y galería en una sola transacción, con bloqueo de la fila al editar. Las imágenes anteriores se migran mediante `007_create_product_images.sql`.
 
+## Filtros de precio
+
+Los listados público y administrativo admiten `minPrice` y `maxPrice` opcionales. En la URL son importes decimales con punto, no negativos, con hasta dos decimales y dentro del mismo máximo que el precio de producto. Se convierten a números después de validar el formato; se rechazan rangos invertidos, cadenas vacías, formatos no numéricos y parámetros repetidos. Ambos extremos son inclusivos, incluido cero. Se puede omitir uno o ambos límites.
+
+Se aplican con SQL parametrizado antes de ordenar y paginar, combinados con las condiciones existentes. No hay cambios de base de datos ni dependencias adicionales.
+
 ## Comprobaciones
 
 Las pruebas rápidas incluyen precios límite, cero y centavos, protocolos de URL, longitudes, identificadores, booleanos, correos normalizados, teléfonos y contraseñas UTF-8. Las pruebas HTTP con PostgreSQL real comprueban que las entradas inválidas no creen productos ni modifiquen registros existentes, y que los valores válidos se persistan sin redondeo.

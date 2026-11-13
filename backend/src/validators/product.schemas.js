@@ -98,10 +98,22 @@ const updateProductSchema = z
   })
   .superRefine(exclusiveImages);
 
+const priceFilterSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/,
+    "price filter must be a decimal with up to two places",
+  )
+  .transform(Number)
+  .pipe(productFields.price);
+
 const publicProductQuerySchema = z
   .object({
     q: z.string().trim().min(1).max(100).optional(),
     categoryId: entityIdTextSchema.optional(),
+    minPrice: priceFilterSchema.optional(),
+    maxPrice: priceFilterSchema.optional(),
     availability: availabilitySchema.optional(),
     isFeatured: z
       .enum(["true", "false"])
@@ -113,9 +125,19 @@ const publicProductQuerySchema = z
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().min(1).max(100).default(12),
   })
-  .strict();
+  .strict()
+  .refine(
+    (query) =>
+      query.minPrice === undefined ||
+      query.maxPrice === undefined ||
+      query.minPrice <= query.maxPrice,
+    {
+      path: ["maxPrice"],
+      message: "maxPrice must be greater than or equal to minPrice",
+    },
+  );
 
-const adminProductQuerySchema = publicProductQuerySchema.extend({
+const adminProductQuerySchema = publicProductQuerySchema.safeExtend({
   isActive: z
     .enum(["true", "false"])
     .transform((value) => value === "true")

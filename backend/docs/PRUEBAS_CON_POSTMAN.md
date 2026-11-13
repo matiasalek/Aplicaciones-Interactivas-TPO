@@ -70,7 +70,7 @@ SELECT * FROM categories WHERE id = <categoryId>;
 
 - Ejecutar `Administración de productos / Crear producto`. Guarda `productId`.
 - Ejecutar `Administración de productos / Consultar producto como administrador`.
-- Ejecutar `Productos públicos / Buscar y filtrar productos`.
+- Ejecutar `Productos públicos / Buscar y filtrar productos`. Incluye mínimo y máximo de precio opcionales: probar límites iguales, uno solo, cero y combinación con categoría, disponibilidad y orden. Mínimo mayor al máximo o más de dos decimales deben devolver `400 VALIDATION_ERROR`.
 - Ejecutar `Administración de productos / Desactivar producto`.
 - Repetir `Productos públicos / Consultar producto`: debe responder `404` porque está desactivado.
 - Ejecutar `Administración de productos / Listar productos inactivos`: debe mostrarlo.

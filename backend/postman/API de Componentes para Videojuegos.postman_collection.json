@@ -238,7 +238,7 @@
           "name": "Buscar y filtrar productos",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/api/v1/products?q=videojuegos&categoryId={{categoryId}}&availability=in_stock&sort=price_desc&page=1&limit=20"
+            "url": "{{baseUrl}}/api/v1/products?q=videojuegos&categoryId={{categoryId}}&availability=in_stock&minPrice=0&maxPrice=1000000&sort=price_desc&page=1&limit=20"
           }
         },
         {

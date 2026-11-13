@@ -72,6 +72,15 @@ function createProductsRepository(database) {
       conditions.push(`products.availability = $${parameters.length}`);
     }
 
+    if (query.minPrice !== undefined) {
+      parameters.push(query.minPrice);
+      conditions.push(`products.price >= $${parameters.length}`);
+    }
+    if (query.maxPrice !== undefined) {
+      parameters.push(query.maxPrice);
+      conditions.push(`products.price <= $${parameters.length}`);
+    }
+
     const where =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     parameters.push(query.limit, (query.page - 1) * query.limit);

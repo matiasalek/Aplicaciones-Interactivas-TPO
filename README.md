@@ -177,11 +177,15 @@ Parámetros del listado:
 | `categoryId` | Identificador positivo. |
 | `availability` | `in_stock`, `out_of_stock`, `preorder`. |
 | `isFeatured` | `true` para destacados, `false` para los demás; omitir para todos. |
+| `minPrice` | Precio mínimo inclusivo, opcional y no negativo, con hasta dos decimales. |
+| `maxPrice` | Precio máximo inclusivo, opcional y no negativo, con hasta dos decimales. |
 | `sort` | `newest`, `name`, `price_asc`, `price_desc`. |
 | `page` | Página, desde 1. |
 | `limit` | Entre 1 y 100. |
 
 Las rutas públicas nunca devuelven productos desactivados.
+
+Los filtros de precio aceptan importes decimales con punto entre 0 y 9999999999.99. Se puede enviar uno o ambos; si se envían ambos, `minPrice` no debe superar a `maxPrice`. Omitirlos conserva el listado anterior. Ejemplo: `/api/v1/products?minPrice=100000&maxPrice=300000&sort=price_asc`. Se combinan con los demás filtros antes de ordenar y paginar; los totales corresponden a los resultados filtrados. Los formatos o rangos inválidos responden `400 VALIDATION_ERROR`. No se agregan dependencias ni migraciones.
 
 ### Administración de productos
 

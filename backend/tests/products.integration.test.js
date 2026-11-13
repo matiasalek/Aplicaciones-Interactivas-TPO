@@ -254,6 +254,123 @@ describe("products API integration", { skip: !connectionString }, () => {
     }
   });
 
+  it("filters inclusive price bounds with other filters and correct paginated totals", async () => {
+    const headers = {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    };
+    const response = await fetch(`${baseUrl}/api/v1/categories`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: "Rango de precios",
+        description: "Pruebas",
+      }),
+    });
+    assert.equal(response.status, 201);
+    const rangeCategoryId = (await response.json()).data.id;
+    const list = async (query, admin = false) => {
+      const response = await fetch(
+        `${baseUrl}/api/v1/${admin ? "admin/" : ""}products?categoryId=${rangeCategoryId}&sort=price_asc&${query}`,
+        { headers },
+      );
+      assert.equal(response.status, 200);
+      return response.json();
+    };
+    try {
+      for (const values of [
+        { price: 0, isFeatured: true },
+        { price: 10.5, isFeatured: true },
+        { price: 20.5 },
+        { price: 25.5, availability: "out_of_stock", isFeatured: true },
+        { price: 30.5, isActive: false, isFeatured: true },
+      ]) {
+        const created = await fetch(`${baseUrl}/api/v1/admin/products`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: `Componente rango ${values.price}`,
+            categoryId: rangeCategoryId,
+            description: "Componente para filtros",
+            imageUrl: "https://example.com/a.png",
+            ...values,
+          }),
+        });
+        assert.equal(created.status, 201);
+      }
+      for (const [query, expected] of [
+        ["minPrice=10.50&maxPrice=20.50", [10.5, 20.5]],
+        ["minPrice=20.50", [20.5, 25.5]],
+        ["maxPrice=10.50", [0, 10.5]],
+        ["maxPrice=0", [0]],
+        ["minPrice=10.50&maxPrice=10.50", [10.5]],
+        ["minPrice=11&maxPrice=20", []],
+        [
+          "minPrice=10.50&maxPrice=25.50&availability=in_stock&isFeatured=true&q=componente",
+          [10.5],
+        ],
+      ]) {
+        const result = await list(query);
+        assert.deepEqual(
+          result.data.map((product) => product.price),
+          expected,
+        );
+        assert.equal(result.meta.total, expected.length);
+      }
+      const first = await list("minPrice=0&maxPrice=25.50&limit=2&page=1");
+      const second = await list("minPrice=0&maxPrice=25.50&limit=2&page=2");
+      assert.equal(first.meta.total, 4);
+      assert.equal(second.meta.total, 4);
+      assert.deepEqual(
+        first.data.map((product) => product.price),
+        [0, 10.5],
+      );
+      assert.deepEqual(
+        second.data.map((product) => product.price),
+        [20.5, 25.5],
+      );
+      const hidden = await list(
+        "minPrice=25.50&maxPrice=30.50&isActive=false",
+        true,
+      );
+      assert.equal(hidden.meta.total, 1);
+      assert.deepEqual(
+        hidden.data.map((product) => product.price),
+        [30.5],
+      );
+      assert.equal((await list("")).meta.total, 4);
+    } finally {
+      await pool.query("DELETE FROM products WHERE category_id = $1", [
+        rangeCategoryId,
+      ]);
+      await pool.query("DELETE FROM categories WHERE id = $1", [
+        rangeCategoryId,
+      ]);
+    }
+  });
+
+  it("returns validation errors for malformed price filters in both routes", async () => {
+    for (const prefix of ["", "admin/"])
+      for (const query of [
+        "minPrice=-1",
+        "maxPrice=1.001",
+        "minPrice=100&maxPrice=99",
+        "maxPrice=Infinity",
+        "minPrice=true",
+        "minPrice=1&minPrice=2",
+        "maxPrice=10000000000",
+        "minPrice=0x10",
+        "minPrice=",
+      ]) {
+        const response = await fetch(
+          `${baseUrl}/api/v1/${prefix}products?${query}`,
+          { headers: { authorization: `Bearer ${token}` } },
+        );
+        assert.equal(response.status, 400, `${prefix}: ${query}`);
+        assert.equal((await response.json()).error.code, "VALIDATION_ERROR");
+      }
+  });
+
   it("deactivates products and retains administrator visibility", async () => {
     const productResult = await pool.query(
       "SELECT id FROM products WHERE name = 'Nova RTX 5090'",

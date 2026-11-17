@@ -20,6 +20,7 @@ El alcance obligatorio del servidor está implementado:
 - Activación, desactivación y disponibilidad de productos.
 - Productos destacados administrables y filtro público de destacados.
 - Galerías de una a diez imágenes mediante URLs, con orden e imagen principal.
+- Promociones y novedades administrables. Las ofertas publicadas definen el precio vigente del catálogo.
 - Búsqueda, filtro por categoría, orden y paginación.
 - Formulario público y gestión administrativa de consultas.
 - 20 productos precargados.
@@ -185,7 +186,7 @@ Parámetros del listado:
 
 Las rutas públicas nunca devuelven productos desactivados.
 
-Los filtros de precio aceptan importes decimales con punto entre 0 y 9999999999.99. Se puede enviar uno o ambos; si se envían ambos, `minPrice` no debe superar a `maxPrice`. Omitirlos conserva el listado anterior. Ejemplo: `/api/v1/products?minPrice=100000&maxPrice=300000&sort=price_asc`. Se combinan con los demás filtros antes de ordenar y paginar; los totales corresponden a los resultados filtrados. Los formatos o rangos inválidos responden `400 VALIDATION_ERROR`. No se agregan dependencias ni migraciones.
+Los filtros de precio aceptan importes decimales con punto entre 0 y 9999999999.99. Se puede enviar uno o ambos. Si se envían ambos, `minPrice` no debe superar a `maxPrice`. Ejemplo `/api/v1/products?minPrice=100000&maxPrice=300000&sort=price_asc`. Los filtros y el orden usan el precio vigente, con la oferta aplicada cuando corresponda. Los totales corresponden a los resultados filtrados antes de paginar. Los formatos o rangos inválidos responden `400 VALIDATION_ERROR`.
 
 ### Administración de productos
 
@@ -239,6 +240,24 @@ El contrato anterior sigue funcionando: crear con `imageUrl` genera una galería
 La migración `007_create_product_images.sql` copia la imagen anterior de cada producto a la posición inicial sin modificar sus otros datos. Detener la API, ejecutar `npm run db:migrate` y reiniciarla. No recrear la base. El seed crea una imagen para los productos nuevos y respeta galerías administradas al repetirse. Eliminar un producto elimina sus imágenes en cascada.
 
 La API guarda URLs; no descarga imágenes ni sube archivos. No se agregaron dependencias. La verificación está en [backend/docs/VERIFICACION_GALERIAS.md](backend/docs/VERIFICACION_GALERIAS.md).
+
+### Promociones y novedades
+
+| Método | Ruta | Acceso | Descripción |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/announcements` | Público | Lista publicaciones visibles, de la más reciente a la más antigua. |
+| `GET` | `/api/v1/admin/announcements` | Administrador | Lista publicaciones y borradores. |
+| `GET` | `/api/v1/admin/announcements/products` | Administrador | Lista las opciones de producto y sus precios habituales. |
+| `POST` | `/api/v1/admin/announcements` | Administrador | Crea una publicación. |
+| `GET` | `/api/v1/admin/announcements/:id` | Administrador | Obtiene una publicación. |
+| `PUT` | `/api/v1/admin/announcements/:id` | Administrador | Guarda la publicación completa y su estado. |
+| `DELETE` | `/api/v1/admin/announcements/:id` | Administrador | Elimina una publicación. |
+
+El cuerpo de alta y edición incluye `type` (`promotion` o `news`), `title` (hasta 120 caracteres), `description` (hasta 2000), `isPublished` (por defecto `false`), `productId` y `promotionPrice`. Solo las promociones admiten un producto y un precio en conjunto. El precio promocional debe ser menor que el habitual. Si el producto ya tiene una promoción publicada se devuelve `409 PRODUCT_PROMOTION_CONFLICT`.
+
+La API de productos devuelve `price` como precio habitual, `promotionPrice` como el importe de oferta o `null` y `effectivePrice` como precio vigente. Para reducir el precio habitual hasta el importe de una oferta publicada o por debajo, primero hay que editar la oferta o volverla a borrador. Una promoción vinculada desaparece de Inicio mientras el producto esté inactivo. Eliminar un producto también elimina sus promociones vinculadas.
+
+Aplicá `npm run db:migrate` para incorporar la migración `008_create_announcements.sql` a una instalación existente.
 
 ### Consultas
 

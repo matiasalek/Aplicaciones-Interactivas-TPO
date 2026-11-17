@@ -59,6 +59,17 @@ erDiagram
     text url
   }
 
+  PRODUCTS o|--o{ ANNOUNCEMENTS : "asociación opcional"
+  ANNOUNCEMENTS {
+    int id PK
+    varchar type
+    varchar title
+    varchar description
+    boolean is_published
+    int product_id FK
+    numeric promotion_price
+  }
+
   STORE_INFORMATION {
     smallint id PK
     varchar name
@@ -90,6 +101,12 @@ La API exige de una a diez URLs completas HTTP/HTTPS sin duplicados. `products.i
 
 La migración 007 copia todas las imágenes anteriores a la posición 0 sin modificar los productos, incluidos los inactivos y destacados. El seed solamente incorpora la imagen inicial cuando el producto todavía no tiene galería; no reemplaza selecciones del administrador. La lectura de colecciones usa una subconsulta agregada para no duplicar productos en los listados.
 
+## Promociones y novedades
+
+`announcements` guarda promociones y novedades, en borrador por defecto. Una promoción puede vincular un producto y fijar un precio promocional. Un índice único parcial garantiza hasta una oferta publicada por producto y una restricción exige que el identificador del producto y el importe promocional se informen juntos. La clave foránea elimina las promociones vinculadas cuando se borra el producto.
+
+Las escrituras de promociones vinculadas y los cambios de precio habitual bloquean la fila del producto antes de comprobar el importe. Así se conserva la relación entre ambos precios al editar y publicar en paralelo. El catálogo calcula el precio vigente a partir de la oferta publicada y la visibilidad del producto.
+
 ## Integridad
 
 - Los correos de administradores son únicos sin distinguir mayúsculas y minúsculas.
@@ -115,10 +132,11 @@ Las migraciones se ejecutan en orden y se registran en `schema_migrations`:
 5. `005_translate_seed_categories.sql`
 6. `006_add_featured_products.sql`
 7. `007_create_product_images.sql`
+8. `008_create_announcements.sql`
 
 El ejecutor usa un bloqueo asesor de PostgreSQL para evitar ejecuciones concurrentes.
 
-Para la entrega también se incluye `database/create_database.sql`, un archivo SQL único de creación que incorpora las siete migraciones. Debe ejecutarse sobre una base vacía:
+Para la entrega también se incluye `database/create_database.sql`, que incorpora las ocho migraciones. Se ejecuta sobre una base vacía:
 
 ```bash
 psql "$DATABASE_URL" -f database/create_database.sql

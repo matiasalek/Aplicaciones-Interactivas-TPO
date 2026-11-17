@@ -3,6 +3,7 @@ const express = require("express");
 const { config } = require("./config/env");
 const database = require("./db/database");
 const { createAuthenticate } = require("./middlewares/auth.middleware");
+const { createAnnouncementsRouters } = require("./routes/announcements.routes");
 const { createAuthRouters } = require("./routes/auth.routes");
 const { createCategoriesRouter } = require("./routes/categories.routes");
 const { createHealthRouter } = require("./routes/health.routes");
@@ -28,12 +29,16 @@ function createApp(dependencies = {}) {
     authConfig: config.auth,
     nodeEnv: config.nodeEnv,
   });
+  const { announcementsRouter, adminAnnouncementsRouter } =
+    createAnnouncementsRouters({ database: appDatabase, authenticate });
 
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
 
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/profile", profileRouter);
+  app.use("/api/v1/announcements", announcementsRouter);
+  app.use("/api/v1/admin/announcements", adminAnnouncementsRouter);
   app.use(
     "/api/v1/health",
     createHealthRouter({ database: appDatabase }),

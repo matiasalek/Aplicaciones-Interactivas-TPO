@@ -1,3 +1,11 @@
+const { AppError } = require("../errors/app-error");
+
+const PROMOTION_JOIN = `
+  LEFT JOIN announcements AS offer
+    ON offer.product_id = products.id AND offer.is_published AND products.is_active
+`;
+const EFFECTIVE_PRICE = "COALESCE(offer.promotion_price, products.price)";
+
 const PRODUCT_COLUMNS = `
   products.id,
   products.name,
@@ -9,6 +17,8 @@ const PRODUCT_COLUMNS = `
     json_build_array(products.image_url)
   ) AS "imageUrls",
   products.price::float8 AS price,
+  offer.promotion_price::float8 AS "promotionPrice",
+  ${EFFECTIVE_PRICE}::float8 AS "effectivePrice",
   products.availability,
   products.is_active AS "isActive",
   products.is_featured AS "isFeatured",
@@ -23,8 +33,8 @@ const PRODUCT_COLUMNS = `
 const SORT_SQL = {
   newest: "products.created_at DESC, products.id DESC",
   name: "products.name ASC, products.id ASC",
-  price_asc: "products.price ASC, products.id ASC",
-  price_desc: "products.price DESC, products.id DESC",
+  price_asc: `${EFFECTIVE_PRICE} ASC, products.id ASC`,
+  price_desc: `${EFFECTIVE_PRICE} DESC, products.id DESC`,
 };
 
 async function replaceImages(client, id, urls) {
@@ -74,11 +84,11 @@ function createProductsRepository(database) {
 
     if (query.minPrice !== undefined) {
       parameters.push(query.minPrice);
-      conditions.push(`products.price >= $${parameters.length}`);
+      conditions.push(`${EFFECTIVE_PRICE} >= $${parameters.length}`);
     }
     if (query.maxPrice !== undefined) {
       parameters.push(query.maxPrice);
-      conditions.push(`products.price <= $${parameters.length}`);
+      conditions.push(`${EFFECTIVE_PRICE} <= $${parameters.length}`);
     }
 
     const where =
@@ -91,6 +101,7 @@ function createProductsRepository(database) {
           count(*) OVER()::integer AS "totalCount"
         FROM products
         JOIN categories ON categories.id = products.category_id
+        ${PROMOTION_JOIN}
         ${where}
         ORDER BY ${SORT_SQL[query.sort]}
         LIMIT $${parameters.length - 1}
@@ -110,6 +121,7 @@ function createProductsRepository(database) {
         SELECT ${PRODUCT_COLUMNS}
         FROM products
         JOIN categories ON categories.id = products.category_id
+        ${PROMOTION_JOIN}
         WHERE products.id = $1
           ${publicOnly ? "AND products.is_active = true" : ""}
       `,
@@ -154,6 +166,20 @@ function createProductsRepository(database) {
           [id],
         );
         if (!existing.rows[0]) return null;
+
+        if (values.price !== undefined) {
+          const offer = await client.query(
+            `SELECT 1 FROM announcements
+             WHERE product_id = $1 AND is_published AND promotion_price >= $2`,
+            [id, values.price],
+          );
+          if (offer.rowCount)
+            throw new AppError(
+              409,
+              "REGULAR_PRICE_CONFLICT",
+              "The regular price must be higher than the published promotional price",
+            );
+        }
 
         let imageUrls = values.imageUrls;
         if (values.imageUrl !== undefined) {

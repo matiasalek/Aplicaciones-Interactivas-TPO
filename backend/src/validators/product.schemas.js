@@ -3,6 +3,7 @@ const {
   webUrlSchema,
   entityIdSchema,
   entityIdTextSchema,
+  moneySchema,
 } = require("./common.schemas");
 
 const productIdSchema = z.object({
@@ -48,13 +49,7 @@ const productFields = {
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(10000),
   imageUrl: webUrlSchema,
-  price: z
-    .number()
-    .min(0)
-    .max(9999999999.99)
-    .refine((value) => Math.round(value * 100) / 100 === value, {
-      message: "price must contain at most 2 decimal places",
-    }),
+  price: moneySchema,
   availability: availabilitySchema,
   isActive: z.boolean(),
   isFeatured: z.boolean(),

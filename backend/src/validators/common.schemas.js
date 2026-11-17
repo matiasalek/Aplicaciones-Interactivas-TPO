@@ -31,10 +31,19 @@ const entityIdTextSchema = z
   .transform(Number)
   .pipe(entityIdSchema);
 
+const moneySchema = z
+  .number()
+  .min(0)
+  .max(9999999999.99)
+  .refine((value) => Math.round(value * 100) / 100 === value, {
+    message: "price must contain at most 2 decimal places",
+  });
+
 module.exports = {
   emailSchema,
   phoneSchema,
   webUrlSchema,
   entityIdSchema,
   entityIdTextSchema,
+  moneySchema,
 };

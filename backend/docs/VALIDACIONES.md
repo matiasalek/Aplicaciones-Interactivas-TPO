@@ -20,7 +20,7 @@ Las entradas inválidas devuelven `400 VALIDATION_ERROR`, con `error.details` pa
 
 ## Galerías
 
-Alta acepta `imageUrls` o el campo anterior `imageUrl`, sin mezclar ambos. La colección requiere entre una y diez URLs completas HTTP/HTTPS, recortadas y con hasta 2000 caracteres cada una. Se rechazan valores no textuales, colecciones vacías, más de diez imágenes y URLs equivalentes repetidas al normalizar con `URL`. Los errores señalan el índice correspondiente, por ejemplo `imageUrls.1`.
+Alta acepta `imageUrls` o el campo anterior `imageUrl`, sin mezclar ambos. La colección requiere entre una y diez referencias de hasta 2000 caracteres. Se aceptan URLs completas HTTP/HTTPS y rutas propias `/api/v1/media/products/<archivo>.webp`. Se recortan los espacios y se rechazan referencias repetidas, colecciones vacías y valores que incumplan el formato. Los errores señalan el índice correspondiente, por ejemplo `imageUrls.1`.
 
 PATCH con `imageUrls` reemplaza la colección completa; con `imageUrl` cambia la principal conservando secundarias. Omitir ambos campos conserva las imágenes. Se guardan producto y galería en una sola transacción, con bloqueo de la fila al editar. Las imágenes anteriores se migran mediante `007_create_product_images.sql`.
 

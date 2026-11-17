@@ -1,4 +1,6 @@
 const database = require("./database");
+const { catalogImageBase } = require("../product-images");
+const products = require("./seed-products");
 
 const categories = [
   [
@@ -21,38 +23,6 @@ const categories = [
   ],
 ];
 
-const products = [
-  ["AMD Ryzen 5 7600", "Procesadores", 289999, "in_stock"],
-  ["AMD Ryzen 7 7800X3D", "Procesadores", 649999, "in_stock"],
-  ["Intel Core i5-14600K", "Procesadores", 479999, "in_stock"],
-  ["Intel Core i7-14700K", "Procesadores", 699999, "preorder"],
-  ["NVIDIA GeForce RTX 4060 8GB", "Tarjetas gráficas", 589999, "in_stock"],
-  ["NVIDIA GeForce RTX 4070 SUPER", "Tarjetas gráficas", 1099999, "in_stock"],
-  ["AMD Radeon RX 7800 XT", "Tarjetas gráficas", 949999, "in_stock"],
-  ["AMD Radeon RX 7900 XTX", "Tarjetas gráficas", 1699999, "preorder"],
-  ["ASUS TUF Gaming B650-PLUS", "Placas madre", 389999, "in_stock"],
-  ["MSI MAG Z790 Tomahawk WiFi", "Placas madre", 519999, "in_stock"],
-  ["Gigabyte B550 AORUS Elite", "Placas madre", 249999, "out_of_stock"],
-  ["Corsair Vengeance DDR5 32GB", "Memoria RAM", 189999, "in_stock"],
-  ["Kingston Fury Beast DDR5 32GB", "Memoria RAM", 174999, "in_stock"],
-  ["G.Skill Ripjaws V DDR4 32GB", "Memoria RAM", 129999, "in_stock"],
-  ["Samsung 990 PRO NVMe 1TB", "Almacenamiento", 199999, "in_stock"],
-  ["WD Black SN850X NVMe 2TB", "Almacenamiento", 289999, "in_stock"],
-  ["Crucial P3 Plus NVMe 1TB", "Almacenamiento", 129999, "out_of_stock"],
-  ["Corsair RM750e 750W", "Fuentes de alimentación", 169999, "in_stock"],
-  ["Seasonic Focus GX-850", "Fuentes de alimentación", 229999, "in_stock"],
-  [
-    "Cooler Master MWE Gold 650W",
-    "Fuentes de alimentación",
-    139999,
-    "preorder",
-  ],
-];
-
-function imageUrlFor(name) {
-  return `https://placehold.co/800x600?text=${encodeURIComponent(name)}`;
-}
-
 async function seed() {
   await database.withTransaction(async (client) => {
     for (const [name, description] of categories) {
@@ -74,7 +44,14 @@ async function seed() {
       categoryResult.rows.map((category) => [category.name, category.id]),
     );
 
-    for (const [name, categoryName, price, availability] of products) {
+    for (const [
+      previousName,
+      name,
+      categoryName,
+      price,
+      availability,
+      image,
+    ] of products) {
       const categoryId = categoryIds.get(categoryName);
 
       if (!categoryId) {
@@ -92,17 +69,20 @@ async function seed() {
             availability,
             is_active
           )
-          VALUES ($1, $2, $3, $4, $5, $6, true)
-          ON CONFLICT (lower(name)) DO UPDATE
-          SET description = EXCLUDED.description
+          SELECT $1, $2, $3, $4, $5, $6, true
+          WHERE $7::text IS NULL OR NOT EXISTS (
+            SELECT 1 FROM products WHERE lower(name) = lower($7)
+          )
+          ON CONFLICT (lower(name)) DO NOTHING
         `,
         [
           categoryId,
           name,
           `${name}, componente para armar una PC para videojuegos.`,
-          imageUrlFor(name),
+          `${catalogImageBase}/${image}.webp`,
           price,
           availability,
+          previousName,
         ],
       );
     }

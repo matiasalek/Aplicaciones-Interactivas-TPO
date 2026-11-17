@@ -1,4 +1,5 @@
 const { AppError } = require("../errors/app-error");
+const { imageReferenceKey } = require("../product-images");
 
 const PROMOTION_JOIN = `
   LEFT JOIN announcements AS offer
@@ -187,13 +188,13 @@ function createProductsRepository(database) {
             "SELECT url FROM product_images WHERE product_id = $1 ORDER BY position",
             [id],
           );
-          const primaryKey = new URL(values.imageUrl).href;
+          const primaryKey = imageReferenceKey(values.imageUrl);
           imageUrls = [
             values.imageUrl,
             ...current.rows
               .slice(1)
               .map((row) => row.url)
-              .filter((url) => new URL(url).href !== primaryKey),
+              .filter((url) => imageReferenceKey(url) !== primaryKey),
           ];
         }
 

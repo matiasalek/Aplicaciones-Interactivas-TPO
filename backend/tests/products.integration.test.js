@@ -444,6 +444,27 @@ describe("products API integration", { skip: !connectionString }, () => {
   it("loads at least 20 products with an idempotent seed", async () => {
     await seed();
     await seed();
+    const creditsResponse = await fetch(
+      `${baseUrl}/api/v1/media/products/credits.json`,
+    );
+    assert.equal(creditsResponse.status, 200);
+    const { data: credits } = await creditsResponse.json();
+    const byProduct = new Map(
+      credits.map((credit) => [credit.product, credit.file]),
+    );
+    assert.equal(byProduct.size, 20);
+    const { rows: catalogPhotos } = await pool.query(
+      "SELECT name, image_url FROM products WHERE image_url LIKE '/api/v1/media/products/%'",
+    );
+    assert.equal(catalogPhotos.length, 20);
+    await Promise.all(
+      catalogPhotos.map(async ({ name, image_url: imageUrl }) => {
+        assert.equal(imageUrl, `/api/v1/media/products/${byProduct.get(name)}`);
+        const photo = await fetch(`${baseUrl}${imageUrl}`, { method: "HEAD" });
+        assert.equal(photo.status, 200, name);
+        assert.equal(photo.headers.get("content-type"), "image/webp");
+      }),
+    );
 
     const result = await pool.query(
       "SELECT count(*)::integer AS count FROM products",

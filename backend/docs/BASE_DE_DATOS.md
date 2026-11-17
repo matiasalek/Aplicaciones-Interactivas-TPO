@@ -133,10 +133,11 @@ Las migraciones se ejecutan en orden y se registran en `schema_migrations`:
 6. `006_add_featured_products.sql`
 7. `007_create_product_images.sql`
 8. `008_create_announcements.sql`
+9. `009_add_catalog_photos.sql`
 
 El ejecutor usa un bloqueo asesor de PostgreSQL para evitar ejecuciones concurrentes.
 
-Para la entrega también se incluye `database/create_database.sql`, que incorpora las ocho migraciones. Se ejecuta sobre una base vacía:
+Para la entrega también se incluye `database/create_database.sql`, que incorpora las nueve migraciones. Se ejecuta sobre una base vacía:
 
 ```bash
 psql "$DATABASE_URL" -f database/create_database.sql

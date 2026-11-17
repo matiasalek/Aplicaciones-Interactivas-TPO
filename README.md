@@ -24,6 +24,7 @@ El alcance obligatorio del servidor está implementado:
 - Búsqueda, filtro por categoría, orden y paginación.
 - Formulario público y gestión administrativa de consultas.
 - 20 productos precargados.
+- Fotografías de los 20 modelos de ejemplo, optimizadas en WebP y servidas localmente.
 - Validaciones y respuestas de error JSON.
 - Pruebas automatizadas e integración real con PostgreSQL.
 
@@ -233,13 +234,17 @@ Content-Type: application/json
 }
 ```
 
-Cada URL debe ser completa, HTTP/HTTPS y de hasta 2000 caracteres. Se recortan espacios exteriores y se rechazan URLs repetidas tras normalizarlas. Se rechazan galerías vacías o con más de diez imágenes y solicitudes que mezclen `imageUrl` e `imageUrls`. El orden del arreglo define el orden de la galería; quitar entradas elimina sus referencias del producto, sin borrar archivos remotos.
+Cada referencia debe ser una URL HTTP/HTTPS completa o una ruta WebP propia del catálogo. Se admiten hasta 2000 caracteres. Se recortan espacios exteriores y se rechazan referencias repetidas tras normalizarlas, galerías vacías o con más de diez imágenes y solicitudes que mezclen `imageUrl` e `imageUrls`. El orden del arreglo define el orden de la galería. Quitar entradas elimina sus referencias del producto.
 
 El contrato anterior sigue funcionando: crear con `imageUrl` genera una galería de una imagen; editar con `imageUrl` reemplaza solamente la principal y conserva las secundarias, sin duplicar la nueva principal si ya estaba entre ellas. Editar otros campos conserva toda la galería. Las escrituras del producto y sus imágenes son transaccionales; se bloquea la fila al editar para impedir colecciones mezcladas ante solicitudes simultáneas.
 
 La migración `007_create_product_images.sql` copia la imagen anterior de cada producto a la posición inicial sin modificar sus otros datos. Detener la API, ejecutar `npm run db:migrate` y reiniciarla. No recrear la base. El seed crea una imagen para los productos nuevos y respeta galerías administradas al repetirse. Eliminar un producto elimina sus imágenes en cascada.
 
-La API guarda URLs; no descarga imágenes ni sube archivos. No se agregaron dependencias. La verificación está en [backend/docs/VERIFICACION_GALERIAS.md](backend/docs/VERIFICACION_GALERIAS.md).
+La galería acepta direcciones HTTP/HTTPS y rutas propias bajo `/api/v1/media/products/` con nombre de archivo WebP. Las fotos de la carga inicial se sirven desde `backend/public/catalog-media/`. El [archivo de créditos](backend/public/catalog-media/credits.json) indica las fuentes, autores, licencias y adaptaciones.
+
+La migración `009_add_catalog_photos.sql` reemplaza las imágenes de ejemplo intactas y actualiza algunos nombres para que coincidan con su foto. Conserva galerías editadas. Un cambio de modelo se aplica a ejemplos con descripción original y sin promociones vinculadas. La migración preserva los identificadores, precios, estados y categorías.
+
+La API guarda referencias de imagen. Los archivos del catálogo se incluyen con el proyecto. La verificación de galerías está en [backend/docs/VERIFICACION_GALERIAS.md](backend/docs/VERIFICACION_GALERIAS.md).
 
 ### Promociones y novedades
 

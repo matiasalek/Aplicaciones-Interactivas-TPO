@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("node:path");
 
 const { config } = require("./config/env");
 const database = require("./db/database");
@@ -15,6 +16,7 @@ const {
 const { createStoreRouter } = require("./routes/store.routes");
 const { errorHandler } = require("./middlewares/error.middleware");
 const { notFoundHandler } = require("./middlewares/not-found.middleware");
+const { catalogImageBase } = require("./product-images");
 
 function createApp(dependencies = {}) {
   const app = express();
@@ -34,6 +36,13 @@ function createApp(dependencies = {}) {
 
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
+  app.use(
+    catalogImageBase,
+    express.static(path.join(__dirname, "../public/catalog-media"), {
+      index: false,
+      redirect: false,
+    }),
+  );
 
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/profile", profileRouter);

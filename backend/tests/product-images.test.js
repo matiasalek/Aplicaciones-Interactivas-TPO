@@ -13,6 +13,26 @@ const product = {
 };
 const urls = ["https://example.com/a.png", "https://example.com/b.png"];
 
+test("las rutas locales se admiten solo para imágenes WebP del catálogo", () => {
+  const photo = "/api/v1/media/products/ryzen-5-7600.webp";
+  assert.deepEqual(
+    updateProductSchema.parse({ imageUrls: [photo, urls[0]] }).imageUrls,
+    [photo, urls[0]],
+  );
+  assert.equal(
+    updateProductSchema.safeParse({ imageUrls: [photo, photo] }).success,
+    false,
+  );
+  for (const imageUrl of [
+    "/api/v1/media/products/../other.webp",
+    "/api/v1/media/products/credits.json",
+    `${photo}?other=1`,
+    "//example.com/asset.webp",
+  ]) {
+    assert.equal(updateProductSchema.safeParse({ imageUrl }).success, false);
+  }
+});
+
 test("alta exige una galería o una imagen anterior, sin mezclar contratos", () => {
   assert.deepEqual(
     createProductSchema.parse({ ...product, imageUrls: urls }).imageUrls,

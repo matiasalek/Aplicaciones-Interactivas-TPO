@@ -1,4 +1,5 @@
 const { z } = require("zod");
+const { catalogImagePattern, imageReferenceKey } = require("../product-images");
 const {
   webUrlSchema,
   entityIdSchema,
@@ -12,8 +13,12 @@ const productIdSchema = z.object({
 
 const categoryIdSchema = entityIdSchema;
 const availabilitySchema = z.enum(["in_stock", "out_of_stock", "preorder"]);
+const imageUrlSchema = z.union([
+  z.string().trim().max(2000).regex(catalogImagePattern),
+  webUrlSchema,
+]);
 const imageUrlsSchema = z
-  .array(webUrlSchema)
+  .array(imageUrlSchema)
   .min(1)
   .max(10)
   .superRefine((urls, context) => {
@@ -21,7 +26,7 @@ const imageUrlsSchema = z
     urls.forEach((url, index) => {
       let key;
       try {
-        key = new URL(url).href;
+        key = imageReferenceKey(url);
       } catch {
         return;
       }
@@ -48,7 +53,7 @@ const productFields = {
   categoryId: categoryIdSchema,
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().min(1).max(10000),
-  imageUrl: webUrlSchema,
+  imageUrl: imageUrlSchema,
   price: moneySchema,
   availability: availabilitySchema,
   isActive: z.boolean(),
@@ -58,7 +63,7 @@ const productFields = {
 const createProductSchema = z
   .object({
     ...productFields,
-    imageUrl: webUrlSchema.optional(),
+    imageUrl: imageUrlSchema.optional(),
     imageUrls: imageUrlsSchema.optional(),
     availability: availabilitySchema.default("in_stock"),
     isActive: z.boolean().default(true),

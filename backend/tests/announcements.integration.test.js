@@ -122,6 +122,12 @@ test(
       false,
     );
     assert.equal((await call(productPath)).data.effectivePrice, 200);
+    assert.equal((await call(productPath)).data.isFeatured, false);
+    assert.equal(
+      (await write(`/admin/products/${otherId}`, "PATCH", { isFeatured: true }))
+        .status,
+      200,
+    );
 
     const concurrent = await Promise.all([
       write(offerPath, "PUT", publish),
@@ -146,6 +152,18 @@ test(
       },
     );
     const query = `categoryId=${category.data.id}`;
+    assert.equal((await call(productPath)).data.isFeatured, true);
+    const selection = await call(
+      `/products?${query}&isFeatured=true&sort=offers_first&limit=1`,
+    );
+    assert.equal(selection.meta.total, 2);
+    assert.deepEqual(
+      selection.data.map(({ id }) => id),
+      [productId],
+    );
+    const admin = await call(adminProductPath, { auth: true });
+    assert.equal(admin.data.effectivePrice, 25.5);
+    assert.equal(admin.data.isFeatured, false);
     const ordered = (await call(`/products?${query}&sort=price_asc`)).data;
     assert.deepEqual(
       ordered.map(({ id }) => id),
@@ -166,6 +184,11 @@ test(
       200,
     );
     assert.equal((await call(productPath)).status, 404);
+    const visibleFeatured = await call(`/products?${query}&isFeatured=true`);
+    assert.deepEqual(
+      visibleFeatured.data.map(({ id }) => id),
+      [otherId],
+    );
     assert.equal(
       (await call("/announcements")).data.some(({ id }) => id === published.id),
       false,
@@ -178,9 +201,22 @@ test(
 
     assert.equal((await write(publishedPath, "PUT", offer)).status, 200);
     assert.equal((await call(productPath)).data.effectivePrice, 200);
+    assert.equal((await call(productPath)).data.isFeatured, false);
+    const withoutManualSelection = await call(
+      `/products?${query}&isFeatured=false`,
+    );
+    assert.deepEqual(
+      withoutManualSelection.data.map(({ id }) => id),
+      [productId],
+    );
+    assert.equal(
+      (await write(adminProductPath, "PATCH", { isFeatured: true })).status,
+      200,
+    );
     assert.equal((await write(publishedPath, "PUT", publish)).status, 200);
     assert.equal((await write(publishedPath, "DELETE")).status, 204);
     assert.equal((await call(productPath)).data.effectivePrice, 200);
+    assert.equal((await call(productPath)).data.isFeatured, true);
     assert.equal((await write(adminProductPath, "DELETE")).status, 204);
     assert.equal((await call(offerPath, { auth: true })).status, 404);
 

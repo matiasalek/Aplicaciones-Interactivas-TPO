@@ -178,10 +178,10 @@ Parámetros del listado:
 | `q` | Texto de búsqueda. |
 | `categoryId` | Identificador positivo. |
 | `availability` | `in_stock`, `out_of_stock`, `preorder`. |
-| `isFeatured` | `true` para destacados, `false` para los demás; omitir para todos. |
+| `isFeatured` | `true` para productos destacados manualmente o con oferta publicada, `false` para los demás. |
 | `minPrice` | Precio mínimo inclusivo, opcional y no negativo, con hasta dos decimales. |
 | `maxPrice` | Precio máximo inclusivo, opcional y no negativo, con hasta dos decimales. |
-| `sort` | `newest`, `name`, `price_asc`, `price_desc`. |
+| `sort` | `newest`, `offers_first`, `name`, `price_asc`, `price_desc`. |
 | `page` | Página, desde 1. |
 | `limit` | Entre 1 y 100. |
 
@@ -199,11 +199,11 @@ Los filtros de precio aceptan importes decimales con punto entre 0 y 9999999999.
 | `PATCH` | `/api/v1/admin/products/:id` | Administrador |
 | `DELETE` | `/api/v1/admin/products/:id` | Administrador |
 
-El listado administrativo acepta los filtros públicos y `isActive=true|false`.
+El listado administrativo acepta los filtros de productos y `isActive=true|false`. Su filtro `isFeatured` usa la selección manual.
 
 ### Productos destacados
 
-Cada producto incluye `isFeatured` en listados y detalles. Al crear, el campo es opcional y vale `false` por defecto; al editar se acepta un booleano JSON. Solo un administrador autenticado puede modificarlo:
+Cada producto incluye `isFeatured` en listados y detalles. En administración representa la selección manual. Al crear, el campo es opcional y vale `false` por defecto. Un administrador autenticado puede modificarlo con un booleano JSON:
 
 ```http
 PATCH /api/v1/admin/products/:id
@@ -213,7 +213,7 @@ Content-Type: application/json
 {"isFeatured": true}
 ```
 
-`GET /api/v1/products?isFeatured=true` devuelve únicamente destacados activos, con los mismos filtros, orden y paginación del catálogo. El listado administrativo permite combinar `isFeatured` con `isActive`. Desactivar conserva la selección de destacado, pero oculta el producto de todas las rutas públicas; reactivar lo vuelve a publicar. No hay límite de destacados ni orden manual: se utiliza el orden solicitado, con `newest` por defecto. La disponibilidad se informa independientemente de la selección.
+`GET /api/v1/products?isFeatured=true` incluye los productos activos marcados manualmente y los que tienen una oferta publicada. El campo público `isFeatured` refleja esa misma regla. Inicio pide `sort=offers_first` para priorizar las ofertas por fecha de actualización y completar los espacios restantes con los destacados manuales más recientes. Al retirar la oferta, se aplica la selección manual. Las rutas públicas solo muestran productos activos.
 
 Para actualizar una instalación existente, detener la API, ejecutar `npm run db:migrate` desde `backend/` y reiniciarla. La migración `006_add_featured_products.sql` agrega el campo sin borrar datos; los productos existentes quedan sin destacar. La carga inicial mantiene las selecciones administradas al ejecutarse nuevamente.
 

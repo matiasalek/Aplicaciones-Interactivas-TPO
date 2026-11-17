@@ -6,6 +6,10 @@ const PROMOTION_JOIN = `
     ON offer.product_id = products.id AND offer.is_published AND products.is_active
 `;
 const EFFECTIVE_PRICE = "COALESCE(offer.promotion_price, products.price)";
+const featuredExpression = (publicOnly) =>
+  publicOnly
+    ? "(products.is_featured OR offer.product_id IS NOT NULL)"
+    : "products.is_featured";
 
 const PRODUCT_COLUMNS = `
   products.id,
@@ -22,7 +26,6 @@ const PRODUCT_COLUMNS = `
   ${EFFECTIVE_PRICE}::float8 AS "effectivePrice",
   products.availability,
   products.is_active AS "isActive",
-  products.is_featured AS "isFeatured",
   products.created_at AS "createdAt",
   products.updated_at AS "updatedAt",
   json_build_object(
@@ -33,6 +36,8 @@ const PRODUCT_COLUMNS = `
 
 const SORT_SQL = {
   newest: "products.created_at DESC, products.id DESC",
+  offers_first:
+    "offer.updated_at DESC NULLS LAST, products.created_at DESC, products.id DESC",
   name: "products.name ASC, products.id ASC",
   price_asc: `${EFFECTIVE_PRICE} ASC, products.id ASC`,
   price_desc: `${EFFECTIVE_PRICE} DESC, products.id DESC`,
@@ -52,6 +57,7 @@ function createProductsRepository(database) {
   async function findAll(query, { publicOnly }) {
     const parameters = [];
     const conditions = [];
+    const featured = featuredExpression(publicOnly);
 
     if (publicOnly) {
       conditions.push("products.is_active = true");
@@ -62,7 +68,7 @@ function createProductsRepository(database) {
 
     if (query.isFeatured !== undefined) {
       parameters.push(query.isFeatured);
-      conditions.push(`products.is_featured = $${parameters.length}`);
+      conditions.push(`${featured} = $${parameters.length}`);
     }
 
     if (query.q) {
@@ -99,6 +105,7 @@ function createProductsRepository(database) {
       `
         SELECT
           ${PRODUCT_COLUMNS},
+          ${featured} AS "isFeatured",
           count(*) OVER()::integer AS "totalCount"
         FROM products
         JOIN categories ON categories.id = products.category_id
@@ -119,7 +126,7 @@ function createProductsRepository(database) {
   async function findById(id, { publicOnly }, executor = database) {
     const result = await executor.query(
       `
-        SELECT ${PRODUCT_COLUMNS}
+        SELECT ${PRODUCT_COLUMNS}, ${featuredExpression(publicOnly)} AS "isFeatured"
         FROM products
         JOIN categories ON categories.id = products.category_id
         ${PROMOTION_JOIN}

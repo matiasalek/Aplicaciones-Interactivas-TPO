@@ -3,6 +3,7 @@ const { describe, it } = require("node:test");
 
 const {
   parseBoolean,
+  parseCorsOrigins,
   parseDatabaseUrl,
   parseJwtSecret,
   parsePort,
@@ -52,6 +53,21 @@ describe("environment configuration", () => {
       () => parseDatabaseUrl("mysql://localhost/database"),
       /DATABASE_URL must use the postgres or postgresql protocol/,
     );
+  });
+
+  it("accepts a list of exact HTTP origins for CORS and defaults to none", () => {
+    assert.deepEqual(parseCorsOrigins(), []);
+    assert.deepEqual(
+      parseCorsOrigins("http://127.0.0.1:5173, https://frontend.example"),
+      ["http://127.0.0.1:5173", "https://frontend.example"],
+    );
+    for (const invalid of [
+      "*",
+      "localhost:5173",
+      "https://frontend.example/path",
+    ]) {
+      assert.throws(() => parseCorsOrigins(invalid), /CORS_ALLOWED_ORIGINS/);
+    }
   });
 
   it("requires a strong JWT secret in production", () => {

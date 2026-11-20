@@ -7,12 +7,16 @@ const { createApp } = require("../src/app");
 describe("HTTP API", () => {
   let baseUrl;
   let server;
+  const allowedOrigin = "http://127.0.0.1:5173";
   const database = {
     checkConnection: async () => ({ database_time: new Date() }),
   };
 
   before(async () => {
-    server = createApp({ database }).listen(0, "127.0.0.1");
+    server = createApp({ database, corsOrigins: [allowedOrigin] }).listen(
+      0,
+      "127.0.0.1",
+    );
     await once(server, "listening");
 
     const address = server.address();
@@ -38,6 +42,62 @@ describe("HTTP API", () => {
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /^application\/json/);
     assert.deepEqual(await response.json(), { status: "ok" });
+  });
+
+  it("exposes API responses only to configured browser origins", async () => {
+    const allowed = await fetch(`${baseUrl}/api/v1/health`, {
+      headers: { Origin: allowedOrigin },
+    });
+    const other = await fetch(`${baseUrl}/api/v1/health`, {
+      headers: { Origin: "http://localhost:5173" },
+    });
+
+    assert.equal(allowed.status, 200);
+    assert.equal(
+      allowed.headers.get("access-control-allow-origin"),
+      allowedOrigin,
+    );
+    assert.match(allowed.headers.get("vary"), /\bOrigin\b/i);
+    assert.equal(other.status, 200);
+    assert.equal(other.headers.get("access-control-allow-origin"), null);
+  });
+
+  it("handles preflight before authentication and preserves JWT validation", async () => {
+    const url = `${baseUrl}/api/v1/profile`;
+    const preflight = await fetch(url, {
+      method: "OPTIONS",
+      headers: {
+        Origin: allowedOrigin,
+        "Access-Control-Request-Method": "PATCH",
+        "Access-Control-Request-Headers": "authorization,content-type",
+      },
+    });
+
+    assert.equal(preflight.status, 204);
+    assert.equal(
+      preflight.headers.get("access-control-allow-origin"),
+      allowedOrigin,
+    );
+    assert.match(
+      preflight.headers.get("access-control-allow-methods"),
+      /\bPATCH\b/,
+    );
+    assert.deepEqual(
+      preflight.headers
+        .get("access-control-allow-headers")
+        .toLowerCase()
+        .split(",")
+        .map((header) => header.trim()),
+      ["authorization", "content-type"],
+    );
+
+    const denied = await fetch(url, { headers: { Origin: allowedOrigin } });
+
+    assert.equal(denied.status, 401);
+    assert.equal(
+      denied.headers.get("access-control-allow-origin"),
+      allowedOrigin,
+    );
   });
 
   it("returns the API readiness status", async () => {

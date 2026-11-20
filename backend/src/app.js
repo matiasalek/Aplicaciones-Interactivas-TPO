@@ -1,3 +1,4 @@
+const cors = require("cors");
 const express = require("express");
 const path = require("node:path");
 
@@ -35,6 +36,16 @@ function createApp(dependencies = {}) {
     createAnnouncementsRouters({ database: appDatabase, authenticate });
 
   app.disable("x-powered-by");
+  const corsOrigins = dependencies.corsOrigins ?? config.corsOrigins;
+  if (corsOrigins.length > 0) {
+    app.use(
+      "/api/v1",
+      cors({
+        origin: corsOrigins,
+        allowedHeaders: ["Authorization", "Content-Type"],
+      }),
+    );
+  }
   app.use(express.json({ limit: "1mb" }));
   app.use(
     catalogImageBase,

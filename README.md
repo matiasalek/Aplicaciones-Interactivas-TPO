@@ -106,6 +106,7 @@ Detener el servicio no elimina la base ni sus datos. Docker no es necesario para
 | --- | --- | --- |
 | `NODE_ENV` | Entorno de ejecución | `development` |
 | `PORT` | Puerto HTTP | `3000` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes HTTP(S) permitidos, separados por coma | `http://127.0.0.1:5173` |
 | `DATABASE_URL` | URL de PostgreSQL | `postgresql://localhost:5432/gamer_store` |
 | `DATABASE_SSL` | Habilita TLS para PostgreSQL | `false` |
 | `DATABASE_POOL_MAX` | Máximo de conexiones | `10` |
@@ -115,6 +116,18 @@ Detener el servicio no elimina la base ni sus datos. Docker no es necesario para
 | `BCRYPT_ROUNDS` | Costo del resumen criptográfico de contraseña | `10` |
 
 En producción, `JWT_SECRET` es obligatorio. El archivo `.env` está excluido de Git.
+
+### CORS y proxy local
+
+El frontend usa rutas relativas y el proxy de Vite las reenvía a Express. Para probar una conexión directa desde el navegador, agregá el origen exacto en `CORS_ALLOWED_ORIGINS` y reiniciá la API. Cada origen incluye protocolo, host y puerto cuando corresponde. Una lista vacía deja CORS deshabilitado.
+
+Con el sitio abierto en `http://127.0.0.1:5173`, ejecutá en la consola:
+
+```js
+await fetch("http://127.0.0.1:3000/api/v1/health").then((r) => r.json());
+```
+
+La respuesta esperada es `{ status: "ok" }`. En Network, la respuesta directa incluye `Access-Control-Allow-Origin: http://127.0.0.1:5173`. Express también responde a la solicitud previa `OPTIONS` para JSON y `Authorization`. Las rutas privadas siguen validando el JWT.
 
 ## Rutas de la API
 

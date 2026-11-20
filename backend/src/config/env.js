@@ -68,6 +68,25 @@ function parseDatabaseUrl(value) {
   return databaseUrl;
 }
 
+function parseCorsOrigins(value = "") {
+  const origins = value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  for (const origin of origins) {
+    if (!URL.canParse(origin)) {
+      throw new Error("CORS_ALLOWED_ORIGINS must contain HTTP(S) origins");
+    }
+
+    const url = new URL(origin);
+    if (!["http:", "https:"].includes(url.protocol) || url.origin !== origin) {
+      throw new Error("CORS_ALLOWED_ORIGINS must contain HTTP(S) origins");
+    }
+  }
+
+  return origins;
+}
+
 function parseJwtSecret(value, nodeEnv) {
   if (value) {
     if (value.length < 32) {
@@ -89,6 +108,7 @@ const nodeEnv = process.env.NODE_ENV || "development";
 const config = Object.freeze({
   nodeEnv,
   port: parsePort(process.env.PORT),
+  corsOrigins: parseCorsOrigins(process.env.CORS_ALLOWED_ORIGINS),
   database: Object.freeze({
     connectionString: parseDatabaseUrl(process.env.DATABASE_URL),
     ssl: parseBoolean(process.env.DATABASE_SSL, "DATABASE_SSL"),
@@ -121,6 +141,7 @@ const config = Object.freeze({
 module.exports = {
   config,
   parseBoolean,
+  parseCorsOrigins,
   parseDatabaseUrl,
   parseJwtSecret,
   parsePort,

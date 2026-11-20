@@ -22,14 +22,15 @@ const { catalogImageBase } = require("./product-images");
 function createApp(dependencies = {}) {
   const app = express();
   const appDatabase = dependencies.database || database;
+  const authConfig = dependencies.authConfig ?? config.auth;
   const authenticate = createAuthenticate({
     database: appDatabase,
-    authConfig: config.auth,
+    authConfig,
   });
   const { authRouter, profileRouter } = createAuthRouters({
     database: appDatabase,
     authenticate,
-    authConfig: config.auth,
+    authConfig,
     nodeEnv: config.nodeEnv,
   });
   const { announcementsRouter, adminAnnouncementsRouter } =

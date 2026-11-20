@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { once } = require("node:events");
 const { after, before, describe, it } = require("node:test");
 const { createApp } = require("../src/app");
+const { authConfig, inviteCode } = require("./fixtures/auth");
 const database = require("../src/db/database");
 const { migrate } = require("../src/db/migrate");
 const { seed } = require("../src/db/seed");
@@ -39,6 +40,7 @@ describe(
       await migrate();
       pool = database.createPool({ connectionString, max: 5, ssl: false });
       server = createApp({
+        authConfig,
         database: {
           checkConnection: () => pool.query("SELECT 1"),
           query: (text, values) => pool.query(text, values),
@@ -55,6 +57,7 @@ describe(
           firstName: "Featured",
           lastName: "Admin",
           email: `featured-${Date.now()}@example.com`,
+          inviteCode,
           phone: "1144445555",
           password: "StrongPass123!",
         },

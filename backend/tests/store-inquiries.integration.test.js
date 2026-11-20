@@ -3,6 +3,7 @@ const { once } = require("node:events");
 const { after, before, describe, it } = require("node:test");
 
 const { createApp } = require("../src/app");
+const { authConfig, inviteCode } = require("./fixtures/auth");
 const { createPool } = require("../src/db/database");
 const { migrate } = require("../src/db/migrate");
 
@@ -34,7 +35,7 @@ describe(
         checkConnection: () => pool.query("SELECT 1"),
         query: (text, values) => pool.query(text, values),
       };
-      server = createApp({ database }).listen(0, "127.0.0.1");
+      server = createApp({ database, authConfig }).listen(0, "127.0.0.1");
       await once(server, "listening");
       const address = server.address();
       baseUrl = `http://127.0.0.1:${address.port}`;
@@ -46,6 +47,7 @@ describe(
           firstName: "Store",
           lastName: "Admin",
           email: "store@example.com",
+          inviteCode,
           phone: "+54 11 5555 1111",
           password: "StrongPass123!",
         }),

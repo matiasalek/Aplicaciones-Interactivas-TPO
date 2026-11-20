@@ -9,7 +9,8 @@
    createdb gamer_store # solamente la primera vez
    cd backend
    npm ci
-   cp .env.example .env
+   cp -n .env.example .env
+   # Configurar ADMIN_INVITE_CODE en .env para habilitar el registro.
    npm run db:setup
    npm run dev
    ```
@@ -29,7 +30,7 @@ No ejecutar toda la colección automáticamente en el primer recorrido: las soli
 
 ### 2. Administrador
 
-- Ejecutar `Autenticación / Registrar administrador` una sola vez. Guarda el token JWT.
+- Configurar la variable local `inviteCode` de Postman con el `ADMIN_INVITE_CODE` del backend. Ejecutar `Autenticación / Registrar administrador` para registrar la cuenta y guardar el token JWT.
 - Ejecutar `Autenticación / Consultar perfil`.
 - Ejecutar `Autenticación / Modificar perfil` y comprobar el nuevo teléfono.
 - Volver a registrar el mismo correo debe responder `409 EMAIL_CONFLICT`.

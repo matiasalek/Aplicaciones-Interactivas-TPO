@@ -7,6 +7,7 @@
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
     { "key": "token", "value": "" },
+    { "key": "inviteCode", "value": "" },
     { "key": "categoryId", "value": "" },
     { "key": "productId", "value": "" },
     { "key": "inquiryId", "value": "" },
@@ -47,7 +48,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"Administrador\",\n  \"lastName\": \"Postman\",\n  \"email\": \"postman.administrador@example.com\",\n  \"phone\": \"+54 11 5555 1234\",\n  \"password\": \"ClaveSegura123!\"\n}"
+              "raw": "{\n  \"firstName\": \"Administrador\",\n  \"lastName\": \"Postman\",\n  \"email\": \"postman.administrador@example.com\",\n  \"phone\": \"+54 11 5555 1234\",\n  \"password\": \"ClaveSegura123!\",\n  \"inviteCode\": \"{{inviteCode}}\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/auth/register"
           }

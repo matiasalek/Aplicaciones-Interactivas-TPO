@@ -3,6 +3,7 @@ const { once } = require("node:events");
 const { test } = require("node:test");
 
 const { createApp } = require("../src/app");
+const { authConfig, inviteCode } = require("./fixtures/auth");
 const database = require("../src/db/database");
 const { migrate } = require("../src/db/migrate");
 
@@ -15,6 +16,7 @@ test(
     await migrate();
     const pool = database.createPool({ connectionString, max: 5, ssl: false });
     const server = createApp({
+      authConfig,
       database: {
         query: (text, values) => pool.query(text, values),
         withTransaction: (callback) => database.withTransaction(callback, pool),
@@ -49,6 +51,7 @@ test(
         firstName: "Test",
         lastName: "Admin",
         email: `announcements-${suffix}@example.com`,
+        inviteCode,
         phone: "+54 11 4444 5555",
         password: "StrongPass123!",
       },

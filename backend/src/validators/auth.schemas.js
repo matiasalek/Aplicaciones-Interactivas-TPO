@@ -29,6 +29,10 @@ const registerSchema = z
     email: emailSchema,
     phone: phoneSchema,
     password: passwordSchema,
+    inviteCode: z
+      .string({ error: "inviteCode must be a string" })
+      .trim()
+      .min(1, "inviteCode is required"),
   })
   .strict();
 

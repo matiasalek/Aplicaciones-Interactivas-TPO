@@ -3,6 +3,7 @@ const { once } = require("node:events");
 const { after, before, describe, it } = require("node:test");
 
 const { createApp } = require("../src/app");
+const { authConfig, inviteCode } = require("./fixtures/auth");
 const defaultDatabase = require("../src/db/database");
 const { migrate } = require("../src/db/migrate");
 const { seed } = require("../src/db/seed");
@@ -35,7 +36,7 @@ describe("products API integration", { skip: !connectionString }, () => {
       withTransaction: (callback) =>
         defaultDatabase.withTransaction(callback, pool),
     };
-    server = createApp({ database }).listen(0, "127.0.0.1");
+    server = createApp({ database, authConfig }).listen(0, "127.0.0.1");
     await once(server, "listening");
     const address = server.address();
     baseUrl = `http://127.0.0.1:${address.port}`;
@@ -47,6 +48,7 @@ describe("products API integration", { skip: !connectionString }, () => {
         firstName: "Product",
         lastName: "Admin",
         email: "products@example.com",
+        inviteCode,
         phone: "+54 11 5555 2222",
         password: "StrongPass123!",
       }),

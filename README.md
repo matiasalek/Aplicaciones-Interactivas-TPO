@@ -112,10 +112,13 @@ Detener el servicio no elimina la base ni sus datos. Docker no es necesario para
 | `DATABASE_POOL_MAX` | Máximo de conexiones | `10` |
 | `JWT_SECRET` | Firma de tokens; mínimo 32 caracteres | Cambiar antes de producción |
 | `JWT_EXPIRES_SECONDS` | Duración de sesión | `28800` |
+| `ADMIN_INVITE_CODE` | Código privado para registrar administradores | Vacío, registro deshabilitado |
 | `PASSWORD_RESET_EXPIRES_MINUTES` | Duración del token de recuperación | `30` |
 | `BCRYPT_ROUNDS` | Costo del resumen criptográfico de contraseña | `10` |
 
 En producción, `JWT_SECRET` es obligatorio. El archivo `.env` está excluido de Git.
+
+Para habilitar el registro, generá un código con `node -e "console.log(require('node:crypto').randomBytes(16).toString('base64url'))"`, pegalo como `ADMIN_INVITE_CODE` en `backend/.env` y reiniciá la API. El código se puede reutilizar para nuevas cuentas mientras siga configurado. El inicio de sesión de cuentas existentes funciona aunque el registro esté deshabilitado.
 
 ### CORS y proxy local
 
@@ -148,7 +151,7 @@ Authorization: Bearer <token>
 
 | Método | Ruta | Acceso | Descripción |
 | --- | --- | --- | --- |
-| `POST` | `/api/v1/auth/register` | Público | Registra un administrador e inicia sesión. |
+| `POST` | `/api/v1/auth/register` | Con código de invitación | Recibe `inviteCode` junto con los datos de registro e inicia sesión. |
 | `POST` | `/api/v1/auth/login` | Público | Inicia sesión. |
 | `POST` | `/api/v1/auth/logout` | Administrador | Revoca la sesión actual. |
 | `POST` | `/api/v1/auth/forgot-password` | Público | Genera un token de recuperación. |

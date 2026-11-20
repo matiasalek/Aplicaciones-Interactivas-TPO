@@ -3,6 +3,7 @@ const { once } = require("node:events");
 const { after, before, describe, it } = require("node:test");
 
 const { createApp } = require("../src/app");
+const { config } = require("../src/config/env");
 
 describe("HTTP API", () => {
   let baseUrl;
@@ -34,6 +35,32 @@ describe("HTTP API", () => {
         resolve();
       });
     });
+  });
+
+  it("keeps the API available with administrator registration disabled", async (t) => {
+    const disabledServer = createApp({
+      database,
+      authConfig: { ...config.auth, adminInviteCode: null },
+    }).listen(0, "127.0.0.1");
+    t.after(() => new Promise((resolve) => disabledServer.close(resolve)));
+    await once(disabledServer, "listening");
+    const url = `http://127.0.0.1:${disabledServer.address().port}/api/v1`;
+
+    assert.equal((await fetch(`${url}/health`)).status, 200);
+    const response = await fetch(`${url}/auth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        firstName: "Ana",
+        lastName: "Prueba",
+        email: "ana@example.com",
+        phone: "1144445555",
+        password: "StrongPass123!",
+        inviteCode: "a-code",
+      }),
+    });
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).error.code, "REGISTRATION_DISABLED");
   });
 
   it("returns the API health status", async () => {

@@ -119,6 +119,7 @@ const config = Object.freeze({
     ),
   }),
   auth: Object.freeze({
+    adminInviteCode: process.env.ADMIN_INVITE_CODE?.trim() || null,
     jwtSecret: parseJwtSecret(process.env.JWT_SECRET, nodeEnv),
     jwtExpiresSeconds: parsePositiveInteger(
       process.env.JWT_EXPIRES_SECONDS,

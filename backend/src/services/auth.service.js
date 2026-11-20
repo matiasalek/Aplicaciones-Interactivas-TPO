@@ -1,4 +1,9 @@
-const { createHash, randomBytes, randomUUID } = require("node:crypto");
+const {
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} = require("node:crypto");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -11,6 +16,10 @@ function publicAdministrator(administrator) {
 }
 
 function createAuthService(repository, authConfig, nodeEnv) {
+  const inviteCodeHash = authConfig.adminInviteCode
+    ? createHash("sha256").update(authConfig.adminInviteCode).digest()
+    : null;
+
   async function issueSession(administrator) {
     const sessionId = randomUUID();
     const expiresAt = new Date(
@@ -43,7 +52,20 @@ function createAuthService(repository, authConfig, nodeEnv) {
   }
 
   return {
-    async register(values) {
+    async register({ inviteCode, ...values }) {
+      if (!inviteCodeHash) {
+        throw new AppError(
+          503,
+          "REGISTRATION_DISABLED",
+          "Administrator registration is disabled",
+        );
+      }
+
+      const submittedCodeHash = createHash("sha256").update(inviteCode).digest();
+      if (!timingSafeEqual(inviteCodeHash, submittedCodeHash)) {
+        throw new AppError(403, "INVALID_INVITE_CODE", "Invitation code is invalid");
+      }
+
       const passwordHash = await bcrypt.hash(
         values.password,
         authConfig.bcryptRounds,

@@ -3,6 +3,7 @@ const { once } = require("node:events");
 const { after, before, describe, it } = require("node:test");
 
 const { createApp } = require("../src/app");
+const { authConfig, inviteCode } = require("./fixtures/auth");
 const { createPool } = require("../src/db/database");
 const { migrate } = require("../src/db/migrate");
 
@@ -23,7 +24,7 @@ describe("authentication API integration", { skip: !connectionString }, () => {
       checkConnection: () => pool.query("SELECT 1"),
       query: (text, values) => pool.query(text, values),
     };
-    server = createApp({ database }).listen(0, "127.0.0.1");
+    server = createApp({ database, authConfig }).listen(0, "127.0.0.1");
     await once(server, "listening");
     const address = server.address();
     baseUrl = `http://127.0.0.1:${address.port}`;
@@ -41,6 +42,41 @@ describe("authentication API integration", { skip: !connectionString }, () => {
     }
   });
 
+  it("rejects missing or invalid invitations without creating an administrator", async () => {
+    const registration = {
+      firstName: "Ana",
+      lastName: "Prueba",
+      email: "invitacion-invalida@example.com",
+      phone: "1144445555",
+      password: "StrongPass123!",
+    };
+    const url = `${baseUrl}/api/v1/auth/register`;
+    const options = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    };
+    const missing = await fetch(url, {
+      ...options,
+      body: JSON.stringify(registration),
+    });
+    assert.equal(missing.status, 400);
+    const { error } = await missing.json();
+    assert.equal(error.code, "VALIDATION_ERROR");
+    assert.ok(error.details.some((detail) => detail.field === "inviteCode"));
+
+    const invalid = await fetch(url, {
+      ...options,
+      body: JSON.stringify({ ...registration, inviteCode: "incorrect" }),
+    });
+    assert.equal(invalid.status, 403);
+    assert.equal((await invalid.json()).error.code, "INVALID_INVITE_CODE");
+    const result = await pool.query(
+      "SELECT id FROM administrators WHERE email = $1",
+      [registration.email],
+    );
+    assert.equal(result.rowCount, 0);
+  });
+
   it("registers, authenticates, updates the profile, and logs out", async () => {
     const registration = {
       firstName: "Ada",
@@ -48,6 +84,7 @@ describe("authentication API integration", { skip: !connectionString }, () => {
       email: "ada@example.com",
       phone: "+54 11 4444 5555",
       password: "StrongPass123!",
+      inviteCode,
     };
     const registerResponse = await fetch(`${baseUrl}/api/v1/auth/register`, {
       method: "POST",
@@ -61,6 +98,7 @@ describe("authentication API integration", { skip: !connectionString }, () => {
     assert.equal(registered.tokenType, "Bearer");
     assert.equal(registered.user.email, registration.email);
     assert.equal(registered.user.passwordHash, undefined);
+    assert.equal(registered.user.inviteCode, undefined);
 
     const duplicateResponse = await fetch(`${baseUrl}/api/v1/auth/register`, {
       method: "POST",
@@ -176,6 +214,7 @@ describe("authentication API integration", { skip: !connectionString }, () => {
       email,
       phone: "+54 (11) 4444-5555",
       password: "Segura123!",
+      inviteCode,
     };
     for (const [field, value] of [
       ["phone", "abcde"],

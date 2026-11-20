@@ -28,6 +28,7 @@ const account = {
   email: "ana@example.com",
   phone: "+54 (11) 4444-5555",
   password: "Segura123!",
+  inviteCode: "admin-invite-for-schema-tests",
 };
 const inquiry = {
   name: "Ana",
